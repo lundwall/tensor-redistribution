@@ -5,7 +5,7 @@
 
 #define CALIBRATE
 #define NUM_RUNS 1
-#define TIME_REQUIRED 0.1
+#define TIME_REQUIRED 0.5
 
 int main(int argc, char** argv)
 {
@@ -68,15 +68,16 @@ int main(int argc, char** argv)
     double start, end;
     int num_runs;
     num_runs = NUM_RUNS;
-    MPI_Request* sendreq = new MPI_Request[P];
+    MPI_Request* sendreq = new MPI_Request[P-1];
 
 #ifdef CALIBRATE
     while (num_runs < (1 << 14)) {
         start = MPI_Wtime();
         for (int k = 0; k < num_runs; ++k) {
+            int count = 0;
             for (int i = 0; i < P; i++) {
                 if (rank != i) {
-                    MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[i]);
+                    MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[count++]);
                 }
             }
 
@@ -85,6 +86,8 @@ int main(int argc, char** argv)
                     MPI_Recv(&(newArray[0][0]), 1, recvtype[i], i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
+
+            MPI_Waitall(P-1, sendreq, MPI_STATUSES_IGNORE);
         }
         end = MPI_Wtime();
 
@@ -97,9 +100,10 @@ int main(int argc, char** argv)
 
     start = MPI_Wtime();
     for(int k = 0; k < num_runs; ++k) {
+        int count = 0;
         for (int i = 0; i < P; i++) {
             if (rank != i) {
-                MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[i]);
+                MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[count++]);
             }
         }
 
@@ -108,15 +112,28 @@ int main(int argc, char** argv)
                 MPI_Recv(&(newArray[0][0]), 1, recvtype[i], i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
+
+        MPI_Waitall(P-1, sendreq, MPI_STATUSES_IGNORE);
     }
     end = MPI_Wtime();
     std::cout << rank << " time : " << (end - start) / (double)num_runs * 1000000.0 << "us"<< std::endl;
 
     // self-copy
-    for (int i = 0; i < N/P; i++)
-    {
-        memcpy(&newArray[(N/P)*rank+i][0], &originalArray[i][(N/P)*rank], sizeof(int)*(N/P));
+    for (int i = 0; i < N/P; i++) {
+        memcpy(&newArray[(N / P) * rank + i][0], &originalArray[i][(N / P) * rank], sizeof(int) * (N / P));
     }
+
+//    if (rank == 1)
+//    {
+//        for (int i = 0; i < N; i++)
+//        {
+//            for (int j = 0; j < N/P; j++)
+//            {
+//                printf("%d_%d ", rank, newArray[i][j]);
+//            }
+//            printf("\n");
+//        }
+//    }
 
     MPI_Finalize();
     
