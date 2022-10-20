@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <iostream>
 #include <stdlib.h>
+#include <cstring>
 
 #define CALIBRATE
 #define NUM_RUNS 1
@@ -117,6 +118,8 @@ int main(int argc, char** argv)
         memcpy(&newArray[(N/P)*rank+i][0], &originalArray[i][(N/P)*rank], sizeof(int)*(N/P));
     }
 
+    MPI_Finalize();
+    
     delete[] originalBuffer; originalBuffer = nullptr;
     delete[] originalArray; originalArray = nullptr;
     delete[] newBuffer; newBuffer = nullptr;
@@ -124,6 +127,4 @@ int main(int argc, char** argv)
     delete[] sendtype; sendtype = nullptr;
     delete[] recvtype; recvtype = nullptr;
     delete[] sendreq; sendreq = nullptr;
-
-    MPI_Finalize();
 }
