@@ -5,7 +5,7 @@
 #include <liblsb.h>
 #include <time.h>
 
-#define LSB_RUNS 10
+#define RUNS 10
 
 int main(int argc, char** argv)
 {
@@ -28,7 +28,7 @@ int main(int argc, char** argv)
 
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("N", N);
-    LSB_Set_Rparam_int("runs", LSB_RUNS);
+    LSB_Set_Rparam_int("runs", RUNS);
 
 
     char* processor_name = new char[256]; int len_processor_name = 0;
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 
     srand(time(NULL));
 
-    for(int k = 0; k < LSB_RUNS; ++k) {
+    for(int k = 0; k < RUNS; ++k) {
         int count = 0;
         LSB_Res();
 
