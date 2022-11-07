@@ -90,19 +90,19 @@ int main(int argc, char** argv)
     LSB_Finalize();
     MPI_Finalize();
 
-    if (rank == 1)
-    {
-        for (int i = 0; i < NI_NEW; i++)
-        {
-            for (int j = 0; j < NJ_NEW; j++)
-            {
-                for (int k = 0; k < NK_NEW; k++)
-                    std::cout << newArray[i*NJ_NEW*NK_NEW+j*NK_NEW+k] << " ";
-                std::cout << std::endl;
-            }
-            std::cout << std::endl << std::endl;
-        }
-    }
+    // if (rank == 1)
+    // {
+    //     for (int i = 0; i < NI_NEW; i++)
+    //     {
+    //         for (int j = 0; j < NJ_NEW; j++)
+    //         {
+    //             for (int k = 0; k < NK_NEW; k++)
+    //                 std::cout << newArray[i*NJ_NEW*NK_NEW+j*NK_NEW+k] << " ";
+    //             std::cout << std::endl;
+    //         }
+    //         std::cout << std::endl << std::endl;
+    //     }
+    // }
     delete[] originalArray; originalArray = nullptr;
     delete[] newArray; newArray = nullptr;
 }
