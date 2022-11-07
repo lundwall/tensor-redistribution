@@ -75,15 +75,15 @@ int main(int argc, char** argv)
     LSB_Finalize();
     MPI_Finalize();
 
-    if (rank == 1)
-    {
-        for (int i = 0; i < NI_NEW; i++)
-        {
-            for (int j = 0; j < NJ_NEW; j++)
-                std::cout << newArray[i*NJ_NEW+j] << " ";
-            std::cout << std::endl;
-        }
-    }
+    // if (rank == 1)
+    // {
+    //     for (int i = 0; i < NI_NEW; i++)
+    //     {
+    //         for (int j = 0; j < NJ_NEW; j++)
+    //             std::cout << newArray[i*NJ_NEW+j] << " ";
+    //         std::cout << std::endl;
+    //     }
+    // }
     delete[] originalArray; originalArray = nullptr;
     delete[] newArray; newArray = nullptr;
 }
