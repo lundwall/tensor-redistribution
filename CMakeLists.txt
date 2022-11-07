@@ -6,4 +6,5 @@ message(STATUS "Run: ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${MPIEXEC_MAX_NUMPROCS} 
 set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(datatype)
+add_subdirectory(manual)
 add_subdirectory(codegen_sample)

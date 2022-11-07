@@ -29,6 +29,7 @@ def matrix_1d_1d(A: dace.int32[m, m*P, m*P]):
 	return B
 # Preview SDFG
 sdfg = matrix_1d_1d.to_sdfg()
+sdfg.save('sdfg.sdfg')
 from IPython.display import Code
 code = Code(sdfg.generate_code()[0].clean_code, language='cpp')
 with open('./test3d_3dgrid.cpp', 'w') as f:
