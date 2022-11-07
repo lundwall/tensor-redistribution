@@ -15,7 +15,7 @@
 
 #define SUB_NI 3
 #define SUB_NJ 2
-#define SUB_NK 2
+#define SUB_NK 3
 
 #define RUNS 10
 
@@ -42,8 +42,8 @@ int main(int argc, char** argv)
 
     int* originalArray = new int[NI*NJ*NK];
     int* newArray = new int[NI_NEW*NJ_NEW*NK_NEW];
-    int* sendArray = new int[SUB_NI*SUB_NJ];
-    int* recvArray = new int[SUB_NI*SUB_NJ];
+    int* sendArray = new int[SUB_NI*SUB_NJ*SUB_NK];
+    int* recvArray = new int[SUB_NI*SUB_NJ*SUB_NK];
 
     for (int i = 0; i < NI*NJ*NK; i++)
         originalArray[i] = 1;
