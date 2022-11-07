@@ -1,7 +1,51 @@
-/* DaCe AUTO-GENERATED FILE. DO NOT MODIFY */
-#include <dace/dace.h>
-#include "../../include/hash.h"
 #include "mpi.h"
+#include <iostream>
+#include <cassert>
+#include <cstring>
+#include <cmath>
+
+template <typename T, int VECLEN, int ALIGNED, int N>
+struct CopyNDDynamic {
+    struct Dynamic{
+
+        static void Copy(const T *src, T *dst, const int &copydim, const int &src_stride, const int &dst_stride)
+        {
+            if (N == 1 && src_stride == 1 && dst_stride == 1) {
+                memcpy(dst, src, copydim * sizeof(T) * VECLEN);
+                return;
+            }
+        }
+
+        template<typename ...Args>
+        static void Copy(const T *src, T *dst, const int &copydim, const int &src_stride, const int &dst_stride,
+                         const Args &... otherdims) {
+            static_assert(sizeof...(otherdims) == (N - 1) * 3, "Dimensionality mismatch in dynamic copy");
+            // Memcpy specialization
+            if (N == 1 && src_stride == 1 && dst_stride == 1) {
+                memcpy(dst, src, copydim * sizeof(T) * VECLEN);
+                return;
+            }
+
+            for (int i = 0; i < copydim; ++i) {
+                CopyNDDynamic<T, VECLEN, ALIGNED, N - 1>::Dynamic::Copy(src + i * src_stride, dst + i * dst_stride, otherdims...);
+            }
+        }
+    };
+};
+
+int int_ceil(int x, int y)
+{
+    return (x + y - 1) / y;
+}
+
+int get_cart_rank(int grid_length, const int* grid, const int* coords) {
+    int rank = coords[0];
+    for (auto i = 1; i < grid_length; ++i) {
+        rank *= grid[i];
+        rank += coords[i];
+    }
+    return rank;
+}
 
 struct matrix_1d_1d_t {
     MPI_Comm __pgrid_0_comm;
@@ -81,8 +125,8 @@ void __program_matrix_1d_1d_internal(matrix_1d_1d_t *__state, int * __restrict__
                             int __out_s1 = __state->__rdistrarray_0_self_dst[__idx * 3 + 1];
                             int __out_s2 = __state->__rdistrarray_0_self_dst[__idx * 3 + 2];
 
-                            dace::CopyNDDynamic<int, 1, false, 3>::Dynamic::Copy(
-                            _inp_buffer + ((((((P * P) * __inp_s0) * m) * m) + ((P * __inp_s1) * m)) + __inp_s2), _out_buffer + (((((P * __out_s0) * m) * m) + ((P * __out_s1) * m)) + __out_s2), __state->__rdistrarray_0_self_size[__idx * 3 + 0], P**2*m**2, P*m**2, __state->__rdistrarray_0_self_size[__idx * 3 + 1], P*m, P*m, __state->__rdistrarray_0_self_size[__idx * 3 + 2], 1, 1
+                            CopyNDDynamic<int, 1, false, 3>::Dynamic::Copy(
+                            _inp_buffer + ((((((P * P) * __inp_s0) * m) * m) + ((P * __inp_s1) * m)) + __inp_s2), _out_buffer + (((((P * __out_s0) * m) * m) + ((P * __out_s1) * m)) + __out_s2), __state->__rdistrarray_0_self_size[__idx * 3 + 0], P * P * m * m, m * m * P, __state->__rdistrarray_0_self_size[__idx * 3 + 1], P*m, P*m, __state->__rdistrarray_0_self_size[__idx * 3 + 2], 1, 1
                             );
                         }
                         for (auto __idx = 0; __idx < __state->__rdistrarray_0_recvs; ++__idx) {
@@ -169,12 +213,12 @@ void __program_matrix_1d_1d_internal(matrix_1d_1d_t *__state, int * __restrict__
     }
 }
 
-DACE_EXPORTED void __program_matrix_1d_1d(matrix_1d_1d_t *__state, int * __restrict__ A, int * __restrict__ __return, int P, int m)
+void __program_matrix_1d_1d(matrix_1d_1d_t *__state, int * __restrict__ A, int * __restrict__ __return, int P, int m)
 {
     __program_matrix_1d_1d_internal(__state, A, __return, P, m);
 }
 
-DACE_EXPORTED matrix_1d_1d_t *__dace_init_matrix_1d_1d(int P, int m)
+matrix_1d_1d_t *__dace_init_matrix_1d_1d(int P, int m)
 {
     int __result = 0;
     matrix_1d_1d_t *__state = new matrix_1d_1d_t;
@@ -396,7 +440,7 @@ DACE_EXPORTED matrix_1d_1d_t *__dace_init_matrix_1d_1d(int P, int m)
                         subsizes[2] = uo2 - lo2;
                         origin[2] = P*m - rem2;
                         rem2 -= uo2 - lo2;
-                        int cart_rank = dace::comm::cart_rank(3, __state->__pgrid_0_dims, pcoords);
+                        int cart_rank = get_cart_rank(3, __state->__pgrid_0_dims, pcoords);
                         if (myrank == cart_rank) { // self-copy
                             __state->__rdistrarray_0_self_src[__state->__rdistrarray_0_self_copies * 3 + 0] = lo0;
                             __state->__rdistrarray_0_self_dst[__state->__rdistrarray_0_self_copies * 3 + 0] = origin[0];
@@ -488,7 +532,7 @@ DACE_EXPORTED matrix_1d_1d_t *__dace_init_matrix_1d_1d(int P, int m)
                         origin[2] = lo2;
                         pcoords[actual_idx2] = idx2;
 
-                        int cart_rank = dace::comm::cart_rank(3, __state->__pgrid_1_dims, pcoords);
+                        int cart_rank = get_cart_rank(3, __state->__pgrid_1_dims, pcoords);
 
                         if (myrank != cart_rank) { // not self-copy
                             MPI_Type_create_subarray(3,  sizes, subsizes, origin, MPI_ORDER_C, MPI_INT, &__state->__rdistrarray_0_send_types[__state->__rdistrarray_0_sends]);
@@ -506,7 +550,7 @@ DACE_EXPORTED matrix_1d_1d_t *__dace_init_matrix_1d_1d(int P, int m)
     return __state;
 }
 
-DACE_EXPORTED void __dace_exit_matrix_1d_1d(matrix_1d_1d_t *__state)
+void __dace_exit_matrix_1d_1d(matrix_1d_1d_t *__state)
 {
 
     if (__state->__pgrid_0_valid) {
@@ -550,3 +594,46 @@ DACE_EXPORTED void __dace_exit_matrix_1d_1d(matrix_1d_1d_t *__state)
     delete __state;
 }
 
+int main(int argc, char** argv)
+{
+    int P = 4;
+    int m = 2;
+    matrix_1d_1d_t* state = __dace_init_matrix_1d_1d(P, m);
+
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
+    // the total data m * P, m * P, m * P
+    // grid_0: P * 1 * 1, block_size_0 is (m, m * P, m * P)
+    // grid_1: 1 * P * 1, block_size_1 is (m * p, m, m * P)
+
+    int *originalArray = new int [P * m * m * m * P];
+    int *newArray = new int [P * m * m * m * P];
+    for(int i = 0; i < m; ++i)
+    {
+        for(int j = 0; j < m * P; ++j)
+        {
+            for(int k = 0; k < m * P; ++k)
+            {
+                originalArray[i * (m * P) * (m * P) + j * m * P + k] = (m * m * P * m * P) * myrank + i * (m * P) * (m * P) + j * m * P + k;
+            }
+        }
+    }
+    __program_matrix_1d_1d(state, originalArray, newArray, P, m);
+
+    if(myrank == 1) {
+        for (int i = 0; i < P * m; ++i)
+        {
+            for(int j = 0; j < m; ++j)
+            {
+                for(int k = 0; k < P * m; ++k) {
+                    std::cout << newArray[i * m * (m * P) + j * m * P + k] << " ";
+                }
+                std::cout << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    __dace_exit_matrix_1d_1d(state);
+}
