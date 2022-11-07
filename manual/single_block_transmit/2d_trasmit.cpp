@@ -4,16 +4,16 @@
 #include <cstring>
 #include <liblsb.h>
 
-#define NI 4
-#define NJ 8
+#define NI 4000
+#define NJ 8000
 
-#define NI_NEW 8
-#define NJ_NEW 4
+#define NI_NEW 8000
+#define NJ_NEW 4000
 
-#define SUB_NI 2
-#define SUB_NJ 3
+#define SUB_NI 2000
+#define SUB_NJ 3000
 
-#define RUNS 10
+#define RUNS 100
 
 int main(int argc, char** argv)
 {
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    LSB_Init("2d_transmit", 0);
+    LSB_Init("2d_transmit_manual", 0);
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("P", size);
 

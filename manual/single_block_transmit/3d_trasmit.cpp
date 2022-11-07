@@ -5,19 +5,19 @@
 #include <liblsb.h>
 #include <time.h>
 
-#define NI 4
-#define NJ 6 
-#define NK 8
+#define NI 400
+#define NJ 600
+#define NK 800
 
-#define NI_NEW 6
-#define NJ_NEW 4
-#define NK_NEW 8
+#define NI_NEW 600
+#define NJ_NEW 400
+#define NK_NEW 800
 
-#define SUB_NI 4
-#define SUB_NJ 2
-#define SUB_NK 3
+#define SUB_NI 400
+#define SUB_NJ 200
+#define SUB_NK 300
 
-#define RUNS 10
+#define RUNS 100
 
 int main(int argc, char** argv)
 {
@@ -25,7 +25,7 @@ int main(int argc, char** argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    LSB_Init("3d_transmit", 0);
+    LSB_Init("3d_transmit_manual", 0);
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("P", size);
 
