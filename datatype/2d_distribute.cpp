@@ -2,10 +2,10 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cstring>
+#include <liblsb.h>
+#include <time.h>
 
-#define CALIBRATE
-#define NUM_RUNS 1
-#define TIME_REQUIRED 0.5
+#define RUNS 10
 
 int main(int argc, char** argv)
 {
@@ -13,6 +13,7 @@ int main(int argc, char** argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    LSB_Init("test_datatype_2d", 0);
 
     int P = size;
     int N = atoi(argv[1]);
@@ -22,6 +23,10 @@ int main(int argc, char** argv)
         printf("Number of processes should divide array length\n");
         return 0;
     }
+
+    LSB_Set_Rparam_int("rank", rank);
+    LSB_Set_Rparam_int("N", N);
+    LSB_Set_Rparam_int("runs", RUNS);
 
     char* processor_name = new char[256]; int len_processor_name = 0;
     MPI_Get_processor_name(processor_name, &len_processor_name);
@@ -65,42 +70,15 @@ int main(int argc, char** argv)
         MPI_Type_commit(&recvtype[i]);
     }
 
-    double start, end;
-    int num_runs;
-    num_runs = NUM_RUNS;
     MPI_Request* sendreq = new MPI_Request[P-1];
 
-#ifdef CALIBRATE
-    while (num_runs < (1 << 14)) {
-        start = MPI_Wtime();
-        for (int k = 0; k < num_runs; ++k) {
-            int count = 0;
-            for (int i = 0; i < P; i++) {
-                if (rank != i) {
-                    MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[count++]);
-                }
-            }
+    srand(time(NULL));
 
-            for (int i = 0; i < P; i++) {
-                if (rank != i) {
-                    MPI_Recv(&(newArray[0][0]), 1, recvtype[i], i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-            }
-
-            MPI_Waitall(P-1, sendreq, MPI_STATUSES_IGNORE);
-        }
-        end = MPI_Wtime();
-
-        double ttime = (double)(end - start);
-
-        if (ttime > TIME_REQUIRED) break;
-        num_runs *= 2;
-    }
-#endif
-
-    start = MPI_Wtime();
-    for(int k = 0; k < num_runs; ++k) {
+    for(int k = 0; k < RUNS; ++k) {
         int count = 0;
+
+        LSB_Res();
+
         for (int i = 0; i < P; i++) {
             if (rank != i) {
                 MPI_Isend(&(originalArray[0][0]), 1, sendtype[i], i, 0, MPI_COMM_WORLD, &sendreq[count++]);
@@ -113,28 +91,17 @@ int main(int argc, char** argv)
             }
         }
 
+        LSB_Rec(k);
+
+        // self-copy
+        for (int i = 0; i < N/P; i++) {
+            memcpy(&newArray[(N / P) * rank + i][0], &originalArray[i][(N / P) * rank], sizeof(int) * (N / P));
+        }
+
         MPI_Waitall(P-1, sendreq, MPI_STATUSES_IGNORE);
     }
-    end = MPI_Wtime();
-    std::cout << rank << " time : " << (end - start) / (double)num_runs * 1000000.0 << "us"<< std::endl;
 
-    // self-copy
-    for (int i = 0; i < N/P; i++) {
-        memcpy(&newArray[(N / P) * rank + i][0], &originalArray[i][(N / P) * rank], sizeof(int) * (N / P));
-    }
-
-//    if (rank == 1)
-//    {
-//        for (int i = 0; i < N; i++)
-//        {
-//            for (int j = 0; j < N/P; j++)
-//            {
-//                printf("%d_%d ", rank, newArray[i][j]);
-//            }
-//            printf("\n");
-//        }
-//    }
-
+    LSB_Finalize();
     MPI_Finalize();
     
     delete[] originalBuffer; originalBuffer = nullptr;

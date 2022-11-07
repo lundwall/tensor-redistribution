@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <cstring>
 #include <liblsb.h>
+#include <time.h>
 
 #define NI 20000
 #define NJ 40000
@@ -58,9 +59,13 @@ int main(int argc, char** argv)
     MPI_Type_create_subarray(2, recv_array_size, subarray_size, recv_start, MPI_ORDER_C, MPI_INT, &recv);
     MPI_Type_commit(&recv);
 
+    srand(time(NULL));
+
     for (int k = 0; k < RUNS; ++k) {
         int count = 0;
+
         LSB_Res();
+
         if (rank == 0)
         {
             MPI_Isend(&(originalArray[0]), 1, send, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
@@ -72,6 +77,7 @@ int main(int argc, char** argv)
 
             MPI_Recv(&(newArray[0]), 1, recv, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
+
         LSB_Rec(k);
     }
 

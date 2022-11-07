@@ -11,11 +11,9 @@ int main(int argc, char** argv)
 {
     int size, rank;
     MPI_Init(&argc, &argv);
-    
-    LSB_Init("test_manual_2d", 0);
-
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    LSB_Init("test_manual_2d", 0);
 
     int P = size;
     int N = atoi(argv[1]);
@@ -29,7 +27,6 @@ int main(int argc, char** argv)
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("N", N);
     LSB_Set_Rparam_int("runs", RUNS);
-
 
     char* processor_name = new char[256]; int len_processor_name = 0;
     MPI_Get_processor_name(processor_name, &len_processor_name);
@@ -58,7 +55,6 @@ int main(int argc, char** argv)
 
     for(int k = 0; k < RUNS; ++k) {
         int count = 0;
-        LSB_Res();
 
         // Manual packing
         int **original_packs = new int*[P];
@@ -79,16 +75,13 @@ int main(int argc, char** argv)
             }
         }
 
+        LSB_Res();
+
         // Send
         for (int i = 0; i < P; i++) {
             if (rank != i) {
                 MPI_Isend(&original_packs[i][0], (N/P)*(N/P), MPI_INT, i, 0, MPI_COMM_WORLD, &sendreq[count++]);
             }
-        }
-
-        // Self-copy
-        for (int i = 0; i < N/P; i++) {
-            memcpy(&newArray[(N / P) * rank + i][0], &originalArray[i][(N / P) * rank], sizeof(int) * (N / P));
         }
 
         // Receive
@@ -98,6 +91,8 @@ int main(int argc, char** argv)
             }
         }
 
+        LSB_Rec(k);
+
         for (int i = 0; i < P; i++) {
             if (rank != i) {
                 for (int j = 0; j < N/P; j++) {
@@ -106,15 +101,18 @@ int main(int argc, char** argv)
             }
         }
 
+        // Self-copy
+        for (int i = 0; i < N/P; i++) {
+            memcpy(&newArray[(N / P) * rank + i][0], &originalArray[i][(N / P) * rank], sizeof(int) * (N / P));
+        }
+
         MPI_Waitall(P-1, sendreq, MPI_STATUSES_IGNORE);
-        LSB_Rec(k);
 
         delete[] original_packs; original_packs = nullptr;
         delete[] original_pack; original_pack = nullptr;
         delete[] new_packs; new_packs = nullptr;
         delete[] new_pack; new_pack = nullptr;
     }
-
 
     LSB_Finalize();
     MPI_Finalize();

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cstring>
+#include <liblsb.h>
+#include <time.h>
 
 #define NI 4
 #define NJ 6 
@@ -15,10 +17,7 @@
 #define SUB_NJ 2
 #define SUB_NK 2
 
-
-#define CALIBRATE
-#define NUM_RUNS 1
-#define TIME_REQUIRED 0.5
+#define RUNS 10
 
 int main(int argc, char** argv)
 {
@@ -26,6 +25,9 @@ int main(int argc, char** argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    LSB_Init("3d_transmit", 0);
+    LSB_Set_Rparam_int("rank", rank);
+    LSB_Set_Rparam_int("P", size);
 
     // size should be 2!
     if (size != 2)
@@ -59,38 +61,13 @@ int main(int argc, char** argv)
     MPI_Type_create_subarray(3, recv_array_size, subarray_size, recv_start, MPI_ORDER_C, MPI_INT, &recv);
     MPI_Type_commit(&recv);
 
-    double start, end;
-    int num_runs;
-    num_runs = NUM_RUNS;
+    srand(time(NULL));
 
-#ifdef CALIBRATE
-    while (num_runs < (1 << 14)) {
-        start = MPI_Wtime();
-        for (int k = 0; k < num_runs; ++k) {
-            int count = 0;
-            if (rank == 0)
-            {
-                MPI_Isend(&(originalArray[0]), 1, send, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
-            }
-
-            if (rank == 1)
-            {
-
-                MPI_Recv(&(newArray[0]), 1, recv, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }
-        }
-        end = MPI_Wtime();
-
-        double ttime = (double)(end - start);
-
-        if (ttime > TIME_REQUIRED) break;
-        num_runs *= 2;
-    }
-#endif
-
-    start = MPI_Wtime();
-    for (int k = 0; k < num_runs; ++k) {
+    for (int k = 0; k < RUNS; ++k) {
         int count = 0;
+
+        LSB_Res();
+
         if (rank == 0)
         {
             MPI_Isend(&(originalArray[0]), 1, send, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
@@ -102,23 +79,23 @@ int main(int argc, char** argv)
 
             MPI_Recv(&(newArray[0]), 1, recv, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
+
+        LSB_Rec(k);
     }
-    end = MPI_Wtime();
 
-    std::cout << rank << " time : " << (end - start) / (double)num_runs * 1000000.0 << "us"<< std::endl;
-
+    LSB_Finalize();
     MPI_Finalize();
 
-    for (int i = 0; i < NI_NEW; i++)
-    {
-        for (int j = 0; j < NJ_NEW; j++)
-        {
-            for (int k = 0; k < NK_NEW; k++)
-                std::cout << newArray[i*NJ_NEW*NK_NEW+j*NK_NEW+k] << " ";
-            std::cout << std::endl;
-        }
-        std::cout << std::endl << std::endl;
-    }
+    // for (int i = 0; i < NI_NEW; i++)
+    // {
+    //     for (int j = 0; j < NJ_NEW; j++)
+    //     {
+    //         for (int k = 0; k < NK_NEW; k++)
+    //             std::cout << newArray[i*NJ_NEW*NK_NEW+j*NK_NEW+k] << " ";
+    //         std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl << std::endl;
+    // }
     delete[] originalArray; originalArray = nullptr;
     delete[] newArray; newArray = nullptr;
 }
