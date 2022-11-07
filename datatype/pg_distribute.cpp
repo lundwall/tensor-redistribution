@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <iostream>
+#include <cstring>
 
 template <typename T, int VECLEN, int ALIGNED, int N>
 struct CopyNDDynamic {
