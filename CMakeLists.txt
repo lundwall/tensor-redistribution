@@ -9,4 +9,3 @@ link_directories(/usr/local/lib)
 
 add_subdirectory(datatype)
 add_subdirectory(manual)
-add_subdirectory(codegen_sample)
