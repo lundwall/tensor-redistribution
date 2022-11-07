@@ -13,7 +13,7 @@
 #define NJ_NEW 4
 #define NK_NEW 8
 
-#define SUB_NI 3
+#define SUB_NI 4
 #define SUB_NJ 2
 #define SUB_NK 3
 
@@ -74,6 +74,7 @@ int main(int argc, char** argv)
 
         if (rank == 1)
         {
+            MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)
@@ -81,7 +82,6 @@ int main(int argc, char** argv)
                     memcpy(newArray+i*NJ_NEW*NK_NEW+j*NK_NEW, recvArray+i*SUB_NJ*SUB_NK+j*SUB_NK, sizeof(int)*SUB_NK);
                 }
             }
-            MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
         LSB_Rec(k);
