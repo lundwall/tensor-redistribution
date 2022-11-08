@@ -12,3 +12,6 @@ target_link_libraries(3dtransmit PUBLIC MPI::MPI_CXX lsb)
 
 add_executable(4dtransmit single_block_transmit/4d_trasmit.cpp)
 target_link_libraries(4dtransmit PUBLIC MPI::MPI_CXX lsb)
+
+add_executable(5dtransmit single_block_transmit/5d_trasmit.cpp)
+target_link_libraries(5dtransmit PUBLIC MPI::MPI_CXX lsb)

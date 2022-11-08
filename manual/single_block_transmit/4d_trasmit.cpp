@@ -5,20 +5,20 @@
 #include <liblsb.h>
 #include <time.h>
 
-#define NI 20
-#define NJ 40
-#define NK 60
-#define NL 80
+#define NI 2
+#define NJ 4
+#define NK 6
+#define NL 8
 
-#define NI_NEW 40
-#define NJ_NEW 20
-#define NK_NEW 80
-#define NL_NEW 60
+#define NI_NEW 4
+#define NJ_NEW 2
+#define NK_NEW 8
+#define NL_NEW 6
 
-#define SUB_NI 20
-#define SUB_NJ 20
-#define SUB_NK 20
-#define SUB_NL 20
+#define SUB_NI 2
+#define SUB_NJ 2
+#define SUB_NK 2
+#define SUB_NL 2
 
 #define RUNS 100
 
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
                 {
                     for (int k = 0; k < SUB_NK; k++)
                     {
-                        memcpy(newArray+i*NJ_NEW*NK_NEW*NL_NEW+j*NK_NEW*NL_NEW+k*NL_NEW, recvArray+i*SUB_NJ*SUB_NK*SUB_NL+j*SUB_NK*SUB_NL, sizeof(int)*SUB_NL);
+                        memcpy(newArray+i*NJ_NEW*NK_NEW*NL_NEW+j*NK_NEW*NL_NEW+k*NL_NEW, recvArray+i*SUB_NJ*SUB_NK*SUB_NL+j*SUB_NK*SUB_NL+k*SUB_NL, sizeof(int)*SUB_NL);
                     }
                 }
             }
@@ -98,25 +98,25 @@ int main(int argc, char** argv)
     LSB_Finalize();
     MPI_Finalize();
 
-    // if (rank == 1)
-    // {
-    //     for (int i = 0; i < NI_NEW; i++)
-    //     {
-    //         for (int j = 0; j < NJ_NEW; j++)
-    //         {
-    //             for (int k = 0; k < NK_NEW; k++)
-    //             {
-    //                 for (int l = 0; l < NL_NEW; l++) {
+    if (rank == 1)
+    {
+        for (int i = 0; i < NI_NEW; i++)
+        {
+            for (int j = 0; j < NJ_NEW; j++)
+            {
+                for (int k = 0; k < NK_NEW; k++)
+                {
+                    for (int l = 0; l < NL_NEW; l++) {
 
-    //                     std::cout << newArray[i*NJ_NEW*NK_NEW*NL_NEW+j*NK_NEW*NL_NEW+k*NL_NEW+l] << " ";
-    //                 }
-    //                 std::cout << std::endl;
-    //             }
-    //             std::cout << std::endl << std::endl;
-    //         }
-    //         std::cout << std::endl << std::endl << std::endl;
-    //     }
-    // }
+                        std::cout << newArray[i*NJ_NEW*NK_NEW*NL_NEW+j*NK_NEW*NL_NEW+k*NL_NEW+l] << " ";
+                    }
+                    std::cout << std::endl;
+                }
+                std::cout << std::endl << std::endl;
+            }
+            std::cout << std::endl << std::endl << std::endl;
+        }
+    }
 
     delete[] originalArray; originalArray = nullptr;
     delete[] newArray; newArray = nullptr;
