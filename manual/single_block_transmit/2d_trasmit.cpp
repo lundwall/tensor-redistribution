@@ -14,6 +14,7 @@
 #define SUB_NJ 3000
 
 #define RUNS 100
+#define COUNT_PACKING_TIME false
 
 int main(int argc, char** argv)
 {
@@ -50,26 +51,39 @@ int main(int argc, char** argv)
 
     for (int k = 0; k < RUNS; ++k) {
         int count = 0;
-        LSB_Res();
+
         if (rank == 0)
         {
+            if (COUNT_PACKING_TIME) {
+                LSB_Res();
+            }
             for (int i = 0; i < SUB_NI; i++)
             {
                 memcpy(sendArray+i*SUB_NJ, originalArray+i*NJ, sizeof(int)*SUB_NJ);
             }
+            if (!COUNT_PACKING_TIME) {
+                LSB_Res();
+            }
             MPI_Isend(&(sendArray[0]), SUB_NI*SUB_NJ, MPI_INT, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+            LSB_Rec(k);
         }
 
         if (rank == 1)
         {
+            LSB_Res();
             MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            if (!COUNT_PACKING_TIME) {
+                LSB_Rec(k);
+            }
             for (int i = 0; i < SUB_NI; i++)
             {
                 memcpy(newArray+i*NJ_NEW, recvArray+i*SUB_NJ, sizeof(int)*SUB_NJ);
             }
+            if (COUNT_PACKING_TIME) {
+                LSB_Rec(k);
+            }
         }
-        LSB_Rec(k);
     }
 
     LSB_Finalize();
