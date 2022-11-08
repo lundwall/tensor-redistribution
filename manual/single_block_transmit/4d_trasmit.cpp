@@ -21,6 +21,7 @@
 #define SUB_NL 2
 
 #define RUNS 100
+#define COUNT_PACKING_TIME false
 
 int main(int argc, char** argv)
 {
@@ -59,10 +60,11 @@ int main(int argc, char** argv)
     for (int r = 0; r < RUNS; ++r) {
         int count = 0;
 
-        LSB_Res();
-
         if (rank == 0)
         {
+            if (COUNT_PACKING_TIME) {
+                LSB_Res();
+            }
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)
@@ -73,13 +75,21 @@ int main(int argc, char** argv)
                     }
                 }
             }
+            if (!COUNT_PACKING_TIME) {
+                LSB_Res();
+            }
             MPI_Isend(&(sendArray[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL, MPI_INT, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+            LSB_Rec(r);
         }
 
         if (rank == 1)
         {
+            LSB_Res();
             MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            if (!COUNT_PACKING_TIME) {
+                LSB_Rec(r);
+            }
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)
@@ -89,6 +99,9 @@ int main(int argc, char** argv)
                         memcpy(newArray+i*NJ_NEW*NK_NEW*NL_NEW+j*NK_NEW*NL_NEW+k*NL_NEW, recvArray+i*SUB_NJ*SUB_NK*SUB_NL+j*SUB_NK*SUB_NL+k*SUB_NL, sizeof(int)*SUB_NL);
                     }
                 }
+            }
+            if (COUNT_PACKING_TIME) {
+                LSB_Rec(r);
             }
         }
 
