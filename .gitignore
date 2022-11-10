@@ -56,3 +56,5 @@ dkms.conf
 build/
 cmake-build-debug/
 .dacecache/
+*.txt
+lsb.*
