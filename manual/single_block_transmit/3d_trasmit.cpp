@@ -1,10 +1,11 @@
+#include <omp.h>
 #include <mpi.h>
 #include <iostream>
 #include <stdlib.h>
 #include <cstring>
 #include <liblsb.h>
 #include <time.h>
-
+#include <string>
 #define NI 400
 #define NJ 600
 #define NK 800
@@ -23,10 +24,13 @@
 int main(int argc, char** argv)
 {
     int size, rank;
+    int thread_num = omp_get_num_threads();
+    std::string name_string = "3d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
+    const char* liblsb_fname = name_string.c_str();
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    LSB_Init("3d_transmit_manual", 0);
+    LSB_Init(liblsb_fname, 0);
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("P", size);
 
@@ -63,6 +67,8 @@ int main(int argc, char** argv)
             if (COUNT_PACKING_TIME) {
                 LSB_Res();
             }
+
+	    #pragma imp parallel for
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)
@@ -85,6 +91,8 @@ int main(int argc, char** argv)
             if (!COUNT_PACKING_TIME) {
                 LSB_Rec(k);
             }
+
+	    #pragma imp parallel for
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)

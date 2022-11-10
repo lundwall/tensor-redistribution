@@ -4,6 +4,7 @@
 #include <cstring>
 #include <liblsb.h>
 #include <omp.h>
+#include <string>
 
 #define NI 4000
 #define NJ 8000
@@ -20,10 +21,14 @@
 int main(int argc, char** argv)
 {
     int size, rank, received_threads;
+    int thread_num = omp_get_num_threads();
+    std::string name_string = "2d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
+    const char* liblsb_fname = name_string.c_str();
+
     MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &received_threads);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    LSB_Init("2d_transmit_manual", 0);
+    LSB_Init(liblsb_fname, 0);
     LSB_Set_Rparam_int("rank", rank);
     LSB_Set_Rparam_int("P", size);
 

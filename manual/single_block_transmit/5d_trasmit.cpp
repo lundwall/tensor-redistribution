@@ -5,7 +5,7 @@
 #include <liblsb.h>
 #include <time.h>
 #include <omp.h>
-
+#include <string>
 #define NI 40
 #define NJ 40
 #define NK 60
@@ -29,10 +29,13 @@
 int main(int argc, char** argv)
 {
     int size, rank;
+    int thread_num = omp_get_num_threads();
+    std::string name_string = "5d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
+    const char* liblsb_fname = name_string.c_str();
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    LSB_Init("5d_transmit_manual", 0);
+    LSB_Init(liblsb_fname, 0);
     LSB_Set_Rparam_int("rank", rank);
     int max_threads = omp_get_max_threads();
     LSB_Set_Rparam_int("threads", max_threads);
