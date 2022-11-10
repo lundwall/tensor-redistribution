@@ -4,24 +4,25 @@
 #include <cstring>
 #include <liblsb.h>
 #include <time.h>
+#include <omp.h>
 
-#define NI 2
-#define NJ 4
-#define NK 6
-#define NL 8
-#define NM 6
+#define NI 40
+#define NJ 40
+#define NK 60
+#define NL 80
+#define NM 60
 
-#define NI_NEW 4
-#define NJ_NEW 2
-#define NK_NEW 8
-#define NL_NEW 6
-#define NM_NEW 6
+#define NI_NEW 40
+#define NJ_NEW 40
+#define NK_NEW 80
+#define NL_NEW 60
+#define NM_NEW 60
 
-#define SUB_NI 2
-#define SUB_NJ 2
-#define SUB_NK 2
-#define SUB_NL 2
-#define SUB_NM 2
+#define SUB_NI 30
+#define SUB_NJ 30
+#define SUB_NK 30
+#define SUB_NL 30
+#define SUB_NM 30
 
 #define RUNS 100
 
@@ -33,7 +34,8 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     LSB_Init("5d_transmit_manual", 0);
     LSB_Set_Rparam_int("rank", rank);
-    LSB_Set_Rparam_int("P", size);
+    int max_threads = omp_get_max_threads();
+    LSB_Set_Rparam_int("threads", max_threads);
 
     // size should be 2!
     if (size != 2)
@@ -66,6 +68,7 @@ int main(int argc, char** argv)
 
         if (rank == 0)
         {
+	    #pragma omp parallel for collapse(4)
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)
@@ -86,6 +89,7 @@ int main(int argc, char** argv)
         if (rank == 1)
         {
             MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	    #pragma omp parallel for collapse(4)
             for (int i = 0; i < SUB_NI; i++)
             {
                 for (int j = 0; j < SUB_NJ; j++)

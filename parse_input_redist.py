@@ -25,7 +25,7 @@ for filename in os.listdir(os.getcwd() + '/' + sys.argv[1]):
 
 	statistics_array = np.array(statistics_list)
 
-	times = times + statistics_array[:,4].tolist()
+	times = times + statistics_array[:,3].tolist()
 
 print("Mean: " + str(np.array([float(i) for i in times]).mean()))
 print("STD: " + str(np.array([float(i) for i in times]).std()))

@@ -5,27 +5,17 @@
 #include <liblsb.h>
 #include <omp.h>
 
-// #define NI 4000
-// #define NJ 8000
+#define NI 4000
+#define NJ 8000
 
-// #define NI_NEW 8000
-// #define NJ_NEW 4000
+#define NI_NEW 8000
+#define NJ_NEW 4000
 
-// #define SUB_NI 2000
-// #define SUB_NJ 3000
-
-#define NI 4
-#define NJ 8
-
-#define NI_NEW 8
-#define NJ_NEW 4
-
-#define SUB_NI 2
-#define SUB_NJ 3
+#define SUB_NI 2000
+#define SUB_NJ 3000
 
 #define RUNS 10
 #define COUNT_PACKING_TIME true
-// #define MULTITHREADING true
 
 int main(int argc, char** argv)
 {
@@ -68,12 +58,11 @@ int main(int argc, char** argv)
             if (COUNT_PACKING_TIME) {
                 LSB_Res();
             }
-            // if (MULTITHREADING) {
-            #pragma omp parallel for
+	    #pragma omp parallel for
             for (int i = 0; i < SUB_NI; i++)
             {
-                int tid = omp_get_thread_num();
-                printf("Hello world from omp thread %d\n", tid);
+                //int tid = omp_get_thread_num();
+                //printf("Hello world from omp thread %d\n", tid);
                 memcpy(sendArray+i*SUB_NJ, originalArray+i*NJ, sizeof(int)*SUB_NJ);
             }
             if (!COUNT_PACKING_TIME) {
@@ -91,8 +80,7 @@ int main(int argc, char** argv)
             if (!COUNT_PACKING_TIME) {
                 LSB_Rec(k);
             }
-            // if (MULTITHREADING) {
-            #pragma omp parallel for
+	    #pragma omp parallel for
             for (int i = 0; i < SUB_NI; i++)
             {
                 memcpy(newArray+i*NJ_NEW, recvArray+i*SUB_NJ, sizeof(int)*SUB_NJ);
