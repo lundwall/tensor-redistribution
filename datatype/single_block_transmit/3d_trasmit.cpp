@@ -5,18 +5,17 @@
 #include <liblsb.h>
 #include <time.h>
 
-#define NI 400
-#define NJ 600
-#define NK 800
+#define NI 480
+#define NJ 400
+#define NK 2400
 
-#define NI_NEW 600
-#define NJ_NEW 400
-#define NK_NEW 800
+#define NI_NEW 400
+#define NJ_NEW 480
+#define NK_NEW 2400
 
-#define SUB_NI 400
-#define SUB_NJ 200
-#define SUB_NK 300
-
+#define SUB_NI 216
+#define SUB_NJ 180
+#define SUB_NK 625
 #define RUNS 100
 
 int main(int argc, char** argv)

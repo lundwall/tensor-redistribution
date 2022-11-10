@@ -29,7 +29,6 @@
 int main(int argc, char** argv)
 {
     int size, rank;
-    int thread_num = omp_get_num_threads();
     std::string name_string = "5d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
     const char* liblsb_fname = name_string.c_str();
     MPI_Init(&argc, &argv);

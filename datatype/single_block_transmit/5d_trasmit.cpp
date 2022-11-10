@@ -4,7 +4,6 @@
 #include <cstring>
 #include <liblsb.h>
 #include <time.h>
-
 #define NI 40
 #define NJ 40
 #define NK 60
@@ -22,7 +21,6 @@
 #define SUB_NK 30
 #define SUB_NL 30
 #define SUB_NM 30
-
 #define RUNS 100
 
 int main(int argc, char** argv)

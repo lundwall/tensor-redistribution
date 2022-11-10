@@ -4,22 +4,20 @@
 #include <cstring>
 #include <liblsb.h>
 #include <time.h>
+#define NI 80
+#define NJ 60
+#define NK 160
+#define NL 600
 
-#define NI 20
-#define NJ 40
-#define NK 60
-#define NL 80
+#define NI_NEW 60
+#define NJ_NEW 80
+#define NK_NEW 600
+#define NL_NEW 160
 
-#define NI_NEW 40
-#define NJ_NEW 20
-#define NK_NEW 80
-#define NL_NEW 60
-
-#define SUB_NI 20
-#define SUB_NJ 20
-#define SUB_NK 20
-#define SUB_NL 20
-
+#define SUB_NI 36
+#define SUB_NJ 36
+#define SUB_NK 150
+#define SUB_NL 125
 #define RUNS 100
 
 int main(int argc, char** argv)

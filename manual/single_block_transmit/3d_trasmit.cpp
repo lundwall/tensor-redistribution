@@ -19,12 +19,11 @@
 #define SUB_NK 625
 
 #define RUNS 100
-#define COUNT_PACKING_TIME false
+#define COUNT_PACKING_TIME true
 
 int main(int argc, char** argv)
 {
     int size, rank;
-    int thread_num = omp_get_num_threads();
     std::string name_string = "3d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
     const char* liblsb_fname = name_string.c_str();
     MPI_Init(&argc, &argv);
@@ -32,8 +31,8 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     LSB_Init(liblsb_fname, 0);
     LSB_Set_Rparam_int("rank", rank);
-    LSB_Set_Rparam_int("P", size);
-
+    int max_threads = omp_get_max_threads();
+    LSB_Set_Rparam_int("threads", max_threads);
     // size should be 2!
     if (size != 2)
     {

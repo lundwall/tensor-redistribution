@@ -5,15 +5,14 @@
 #include <liblsb.h>
 #include <time.h>
 
-#define NI 4000
-#define NJ 8000
+#define NI 19200
+#define NJ 24000
 
-#define NI_NEW 8000
-#define NJ_NEW 4000
+#define NI_NEW 24000
+#define NJ_NEW 19200
 
-#define SUB_NI 2000
-#define SUB_NJ 3000
-
+#define SUB_NI 5400
+#define SUB_NJ 4500
 #define RUNS 100
 
 int main(int argc, char** argv)
