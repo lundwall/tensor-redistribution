@@ -1,5 +1,15 @@
 #!/usr/bin/env sh
 
+rm out_*.txt
+rm lsb.*
+
+for num_dim in {2..5}
+do
+    sbatch --output=out_datatype_${num_dim}d.txt --mem-per-cpu=2G --ntasks=2 --ntasks-per-node=1 --wrap="mpirun ./build/datatype/${num_dim}dtransmit"
+    sleep 1
+    while squeue | grep -m 1 "wrap"; do sleep 1; done
+done
+
 for num_thread in {1..8}
 do
     for num_dim in {2..5}
