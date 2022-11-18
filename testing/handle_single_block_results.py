@@ -2,6 +2,8 @@ import sys
 import numpy as np
 import os
 
+if len(sys.argv) != 2:
+	print("exactly one input folder should be specified.")
 
 times = [[], [], [], [], [], [], [], []]
 cases = ['2d', '3d', '4d', '5d']
@@ -9,7 +11,7 @@ node_types = ['r0', 'r1']
 for rank in node_types:
 	for dim in cases:
 		filename = 'lsb.' + dim + '_transmit_datatype.' + rank
-		input_file = open('./' + filename, 'r')
+		input_file = open(sys.argv[1]+'/' + filename, 'r')
 		lines = input_file.readlines()
 		parameter_list = []
 		statistics_list = []
@@ -26,14 +28,16 @@ for rank in node_types:
 
 		statistics_array = np.array(statistics_list)
 		# print(statistics_array)
+
 		datatype_time = statistics_array[:,3]
+
 		print(rank, dim, 'datatype median', np.median([float(i) for i in datatype_time]) / 1000)
 
 		for num_thread in range(1, 9):
 		# for filename in os.listdir(os.getcwd()):
 			filename = 'lsb.' + dim + '_transmit_manual' + str(num_thread) + '.' + rank
 			# print(filename)
-			input_file = open('./' + filename, 'r')
+			input_file = open(sys.argv[1]+'/' + filename, 'r')
 			lines = input_file.readlines()
 			parameter_list = []
 			statistics_list = []
