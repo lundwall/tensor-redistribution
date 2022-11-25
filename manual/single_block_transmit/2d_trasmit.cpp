@@ -17,6 +17,7 @@
 
 #define RUNS 100
 #define CHUNK_SIZE 4050000 // 900*4500, 1/6 of all the data
+#define NUM_CHUNKS SUB_NI*SUB_NJ/CHUNK_SIZE
 
 int main(int argc, char** argv)
 {
@@ -47,7 +48,7 @@ int main(int argc, char** argv)
     int* newArray = new int[NI_NEW*NJ_NEW];
     int* sendArray = new int[SUB_NI*SUB_NJ];
     int* recvArray = new int[SUB_NI*SUB_NJ];
-    MPI_Request* sendreq = new MPI_Request[SUB_NI*SUB_NJ / CHUNK_SIZE];
+    MPI_Request* sendreq = new MPI_Request[1];
     MPI_Request* recvreq = new MPI_Request[1];
 
     for (int i = 0; i < NI*NJ; i++)
@@ -62,22 +63,26 @@ int main(int argc, char** argv)
         if (rank == 0)
         {
             LSB_Res();
-            for (int chunk = 0; chunk < SUB_NI*SUB_NJ / CHUNK_SIZE; chunk++)
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
+                if (chunk > 0) {
+                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                }
                 #pragma omp parallel
+                #pragma omp single
+                for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
                 {
-                    #pragma omp single
+                    #pragma omp task
                     {
-                        for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
-                        {
-                            #pragma omp task
-                            memcpy(sendArray + chunk*CHUNK_SIZE + i*SUB_NJ, originalArray + (chunk*CHUNK_SIZE/SUB_NJ)*NJ + i*NJ, sizeof(int)*SUB_NJ);
-                        }
+                        int tid = omp_get_thread_num();
+                        printf("Hello world from omp thread %d\n", tid);
+
+                        memcpy(sendArray + chunk * CHUNK_SIZE + i * SUB_NJ, originalArray + (chunk * CHUNK_SIZE / SUB_NJ) * NJ + i * NJ, sizeof(int) * SUB_NJ);
                     }
                 }
-                MPI_Isend(&(sendArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 1, chunk, MPI_COMM_WORLD, &sendreq[chunk]);
+                MPI_Isend(&(sendArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 1, chunk, MPI_COMM_WORLD, sendreq);
             }
-            MPI_Waitall(SUB_NI*SUB_NJ / CHUNK_SIZE, sendreq, MPI_STATUSES_IGNORE);
+            MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             LSB_Rec(k);
         }
 
@@ -85,32 +90,19 @@ int main(int argc, char** argv)
         {
             LSB_Res();
             MPI_Irecv(&(recvArray[0]), CHUNK_SIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, recvreq);
-            for (int chunk = 0; chunk < (SUB_NI*SUB_NJ / CHUNK_SIZE) - 1; chunk++)
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
                 MPI_Waitall(1, recvreq, MPI_STATUSES_IGNORE);
-                MPI_Irecv(&(recvArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 0, chunk, MPI_COMM_WORLD, recvreq);
-                #pragma omp parallel
+                if (chunk != NUM_CHUNKS - 1)
                 {
-                    #pragma omp single
-                    {
-                        for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
-                        {
-                            #pragma omp task
-                            memcpy(newArray + (chunk*CHUNK_SIZE/SUB_NJ)*NJ_NEW + i*NJ_NEW, recvArray + chunk*CHUNK_SIZE + i*SUB_NJ, sizeof(int)*SUB_NJ);
-                        }
-                    }
+                    MPI_Irecv(&(recvArray[(chunk+1)*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 0, chunk+1, MPI_COMM_WORLD, recvreq);
                 }
-            }
-            MPI_Waitall(1, recvreq, MPI_STATUSES_IGNORE);
-            #pragma omp parallel
-            {
+                #pragma omp parallel
                 #pragma omp single
+                for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
                 {
-                    for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
-                    {
-                        #pragma omp task
-                        memcpy(newArray + SUB_NI*NJ_NEW + i*NJ_NEW, recvArray + SUB_NI*SUB_NJ + i*SUB_NJ, sizeof(int)*SUB_NJ);
-                    }
+                    #pragma omp task
+                    memcpy(newArray + (chunk * CHUNK_SIZE / SUB_NJ) * NJ_NEW + i * NJ_NEW, recvArray + chunk * CHUNK_SIZE + i * SUB_NJ, sizeof(int) * SUB_NJ);
                 }
             }
             LSB_Rec(k);
