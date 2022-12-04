@@ -25,6 +25,8 @@
 #define SUB_NM 30
 
 #define RUNS 100
+#define CHUNK_SIZE 4050000 // 5*30*30*30, 1/6 of all the data
+#define NUM_CHUNKS SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM/CHUNK_SIZE
 
 int main(int argc, char** argv)
 {
@@ -55,6 +57,7 @@ int main(int argc, char** argv)
     int* sendArray = new int[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     int* recvArray = new int[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     MPI_Request* sendreq = new MPI_Request[1];
+    MPI_Request* recvreq = new MPI_Request[1];
 
     for (int i = 0; i < NI*NJ*NK*NL*NM; i++)
         originalArray[i] = 1;
@@ -66,48 +69,67 @@ int main(int argc, char** argv)
     for (int r = 0; r < RUNS; ++r) {
         int count = 0;
 
-        LSB_Res();
-
         if (rank == 0)
         {
-	    #pragma omp parallel for collapse(4)
-            for (int i = 0; i < SUB_NI; i++)
+            LSB_Res();
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
-                for (int j = 0; j < SUB_NJ; j++)
+                if (chunk > 0) {
+                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                }
+                for (int i = 0; i < CHUNK_SIZE / (SUB_NJ*SUB_NK*SUB_NL*SUB_NM); i++)
                 {
-                    for (int k = 0; k < SUB_NK; k++)
+                    for (int j = 0; j < SUB_NJ; j++)
                     {
-                        for (int l = 0; l < SUB_NL; l++)
+                        for (int k = 0; k < SUB_NK; k++)
                         {
-                            memcpy(sendArray+ i*SUB_NJ*SUB_NK*SUB_NL*SUB_NM + j*SUB_NK*SUB_NL*SUB_NM + k*SUB_NL*SUB_NM + l*SUB_NM, originalArray + i*NJ*NK*NL*NM + j*NK*NL*NM + k*NL*NM + l*NM, sizeof(int)*SUB_NM);
+                            #pragma omp parallel
+                            #pragma omp single
+                            for (int l = 0; l < SUB_NL; l++)
+                            {
+                                #pragma omp task
+                                memcpy(sendArray + chunk*CHUNK_SIZE + i*SUB_NJ*SUB_NK*SUB_NL*SUB_NM + j*SUB_NK*SUB_NL*SUB_NM + k*SUB_NL*SUB_NM + l*SUB_NM, originalArray + chunk*(CHUNK_SIZE/(SUB_NJ*SUB_NK*SUB_NL*SUB_NM))*(NJ*NK*NL*NM) + i*NJ*NK*NL*NM + j*NK*NL*NM + k*NL*NM + l*NM, sizeof(int)*SUB_NM);
+                            }
                         }
                     }
                 }
+                MPI_Isend(&(sendArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 1, chunk, MPI_COMM_WORLD, sendreq);
             }
-            MPI_Isend(&(sendArray[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+            LSB_Rec(r);
         }
 
         if (rank == 1)
         {
-            MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	    #pragma omp parallel for collapse(4)
-            for (int i = 0; i < SUB_NI; i++)
+            LSB_Res();
+            MPI_Irecv(&(recvArray[0]), CHUNK_SIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, recvreq);
+
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
-                for (int j = 0; j < SUB_NJ; j++)
+                MPI_Waitall(1, recvreq, MPI_STATUSES_IGNORE);
+                if (chunk != NUM_CHUNKS - 1)
                 {
-                    for (int k = 0; k < SUB_NK; k++)
+                    MPI_Irecv(&(recvArray[(chunk+1)*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 0, chunk+1, MPI_COMM_WORLD, recvreq);
+                }
+                for (int i = 0; i < CHUNK_SIZE / (SUB_NJ*SUB_NK*SUB_NL); i++)
+                {
+                    for (int j = 0; j < SUB_NJ; j++)
                     {
-                        for (int l = 0; l < SUB_NL; l++)
+                        for (int k = 0; k < SUB_NK; k++)
                         {
-                            memcpy(newArray+i*NJ_NEW*NK_NEW*NL_NEW*NM_NEW+j*NK_NEW*NL_NEW*NM_NEW+k*NL_NEW*NM_NEW+l*NM_NEW, recvArray+i*SUB_NJ*SUB_NK*SUB_NL*SUB_NM+j*SUB_NK*SUB_NL*SUB_NM+k*SUB_NL*SUB_NM+l*SUB_NM, sizeof(int)*SUB_NM);
+                            #pragma omp parallel
+                            #pragma omp single
+                            for (int l = 0; l < SUB_NL; l++)
+                            {
+                                #pragma omp task
+                                memcpy(newArray + chunk*(CHUNK_SIZE / (SUB_NJ*SUB_NK*SUB_NL*SUB_NM)) + i*NJ_NEW*NK_NEW*NL_NEW*NM_NEW + j*NK_NEW*NL_NEW*NM_NEW + k*NL_NEW*NM_NEW + l*NM_NEW, recvArray + chunk*CHUNK_SIZE + i*SUB_NJ*SUB_NK*SUB_NL*SUB_NM + j*SUB_NK*SUB_NL*SUB_NM + k*SUB_NL*SUB_NM + l*SUB_NM, sizeof(int)*SUB_NM);
+                            }
                         }
                     }
                 }
             }
+            LSB_Rec(r);
         }
-
-        LSB_Rec(r);
     }
 
     LSB_Finalize();

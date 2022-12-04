@@ -18,3 +18,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 
 add_subdirectory(datatype)
 add_subdirectory(manual)
+add_subdirectory(validation)

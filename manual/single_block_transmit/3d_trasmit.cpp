@@ -19,7 +19,8 @@
 #define SUB_NK 625
 
 #define RUNS 100
-#define COUNT_PACKING_TIME true
+#define CHUNK_SIZE 4050000 // 36*180*625, 1/6 of all the data
+#define NUM_CHUNKS SUB_NI*SUB_NJ*SUB_NK/CHUNK_SIZE
 
 int main(int argc, char** argv)
 {
@@ -55,30 +56,37 @@ int main(int argc, char** argv)
         newArray[i] = 0;
     MPI_Datatype send, recv;
     MPI_Request* sendreq = new MPI_Request[1];
+    MPI_Request* recvreq = new MPI_Request[1];
 
     srand(time(NULL));
 
-    for (int k = 0; k < RUNS; ++k) {
+    for (int k = 0; k < RUNS; ++k)
+    {
         int count = 0;
 
         if (rank == 0)
         {
-            if (COUNT_PACKING_TIME) {
-                LSB_Res();
-            }
+            LSB_Res();
 
-	    #pragma omp parallel for collapse(2)
-            for (int i = 0; i < SUB_NI; i++)
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
-                for (int j = 0; j < SUB_NJ; j++)
-                {
-                    memcpy(sendArray+i*SUB_NJ*SUB_NK+j*SUB_NK, originalArray+i*NJ*NK+j*NK, sizeof(int)*SUB_NK);
+                if (chunk > 0) {
+                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
                 }
+
+                for (int i = 0; i < CHUNK_SIZE / (SUB_NJ*SUB_NK); i++)
+                {
+                    #pragma omp parallel
+                    #pragma omp single
+                    for (int j = 0; j < SUB_NJ; j++)
+                    {
+                        // memcpy from: array_start + chunk_id*num_slices_per_chunk*slice_size
+                        #pragma omp task
+                        memcpy(sendArray + chunk*CHUNK_SIZE + i*SUB_NJ*SUB_NK + j*SUB_NK, originalArray + chunk*(CHUNK_SIZE/(SUB_NJ*SUB_NK))*(NJ*NK) + i*NJ*NK + j*NK, sizeof(int)*SUB_NK);
+                    }
+                }
+                MPI_Isend(&(sendArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 1, chunk, MPI_COMM_WORLD, sendreq);
             }
-            if (!COUNT_PACKING_TIME) {
-                LSB_Res();
-            }
-            MPI_Isend(&(sendArray[0]), SUB_NI*SUB_NJ*SUB_NK, MPI_INT, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             LSB_Rec(k);
         }
@@ -86,22 +94,27 @@ int main(int argc, char** argv)
         if (rank == 1)
         {
             LSB_Res();
-            MPI_Recv(&(recvArray[0]), SUB_NI*SUB_NJ*SUB_NK, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            if (!COUNT_PACKING_TIME) {
-                LSB_Rec(k);
-            }
+            MPI_Irecv(&(recvArray[0]), CHUNK_SIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, recvreq);
 
-	    #pragma omp parallel for collapse(2)
-            for (int i = 0; i < SUB_NI; i++)
+            for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
-                for (int j = 0; j < SUB_NJ; j++)
+                MPI_Waitall(1, recvreq, MPI_STATUSES_IGNORE);
+                if (chunk != NUM_CHUNKS - 1)
                 {
-                    memcpy(newArray+i*NJ_NEW*NK_NEW+j*NK_NEW, recvArray+i*SUB_NJ*SUB_NK+j*SUB_NK, sizeof(int)*SUB_NK);
+                    MPI_Irecv(&(recvArray[(chunk+1)*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 0, chunk+1, MPI_COMM_WORLD, recvreq);
+                }
+                for (int i = 0; i < CHUNK_SIZE / (SUB_NJ*SUB_NK); i++)
+                {
+                    #pragma omp parallel
+                    #pragma omp single
+                    for (int j = 0; j < SUB_NJ; j++)
+                    {
+                        #pragma omp task
+                        memcpy(newArray + chunk*(CHUNK_SIZE / (SUB_NJ*SUB_NK))*NJ_NEW*NK_NEW + i*NJ_NEW*NK_NEW + j*NK_NEW, recvArray + chunk*CHUNK_SIZE + i*SUB_NJ*SUB_NK + j*SUB_NK, sizeof(int)*SUB_NK);
+                    }
                 }
             }
-            if (COUNT_PACKING_TIME) {
-                LSB_Rec(k);
-            }
+            LSB_Rec(k);
         }
     }
 
