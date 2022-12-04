@@ -8,6 +8,7 @@
 #include <tuple>
 #include <cassert>
 #include <send_recv.hpp>
+#include <validation.hpp>
 
 int main(int argc, char** argv){
     constexpr size_t RUNS = 1;
@@ -29,12 +30,8 @@ int main(int argc, char** argv){
     int rank;
     rank = init<T, N>(argc, argv, file_name, chunk_num, current_array, new_array, current_size, new_size);
 
-    for (int i = 0; i < get_product<N>(current_size); i++){
-        current_array[i] = i;
-    }
-    for (int i = 0; i < get_product<N>(new_size); i++){
-        new_array[i] = 0;
-    }
+    validate_init<T, N>(current_array, current_size);
+    validate_init<T, N>(new_array, new_size);
 
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
@@ -50,11 +47,11 @@ int main(int argc, char** argv){
             recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
             LSB_Rec(k);
         }
-        for (int i = 0; i < std::get<0>(new_size); i++){
-            for (int j = 0; j < std::get<1>(new_size); j++){
-                std::cout << new_array[i * std::get<1>(new_size) + j] << "\t";
-            }
-            std::cout << "\n";
+        bool verified = validate_check<T, N>(current_array, new_array, current_size, new_size, from, to);
+        if (verified) {
+            std::cout << "Validation passed" << std::endl;
+        } else {
+            std::cout << "Validation failed" << std::endl;
         }
     }
 
