@@ -7,6 +7,9 @@
 #include <tuple>
 #include <cassert>
 
+#ifndef SEND_RECV_HPP
+#define SEND_RECV_HPP
+
 using std::size_t;
 
 template <typename T, size_t N>
@@ -365,3 +368,4 @@ void term(T*& orig_arr, T*& new_arr){
     new_arr = nullptr;
 }
 
+#endif
