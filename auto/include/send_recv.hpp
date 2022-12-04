@@ -167,9 +167,34 @@ inline void check_divisible(NdIndices<N> top, NdIndices<N> bot){
     return check_divisible_helper<N>(top, bot, n_ind);
 }
 
+template <size_t I>
+struct LSB_chunk_dim_cstr{
+    inline static char* static_str;
+
+    static char* set(const std::string& str){
+        static_str = strdup(str.c_str());
+        return static_str;
+    }
+
+    static char* get(){
+        return static_str;
+    }
+};
+
+template <size_t... Is>
+inline void LSB_chunk_dim_cstr_free_all_helper(const std::index_sequence<Is...>&){
+    (free(LSB_chunk_dim_cstr<Is>::get()), ...);
+}
+
+template <ssize_t N>
+inline void LSB_chunk_dim_cstr_free_all(){
+    auto n_ind = std::make_index_sequence<N>();
+    return LSB_chunk_dim_cstr_free_all_helper(n_ind);
+}
+
 template <size_t N,  size_t... Is>
 inline void set_lsb_chunk_size_helper(NdIndices<N> inp, const std::index_sequence<Is...>&){
-    (LSB_Set_Rparam_long((std::string("chunk_dim_") + std::to_string(Is)).c_str(), std::get<Is>(inp)), ...);
+    (LSB_Set_Rparam_long(LSB_chunk_dim_cstr<Is>::set(std::string("chunk_dim_") + std::to_string(Is)), std::get<Is>(inp)), ...);
 }
 
 template <size_t N>
@@ -357,10 +382,12 @@ int init(int argc, char** argv, const std::string& name, NdIndices<N> chunk_num,
     return rank;
 }
 
-template <typename T>
+template <typename T, size_t N>
 void term(T*& orig_arr, T*& new_arr){
     LSB_Finalize();
     MPI_Finalize();
+
+    LSB_chunk_dim_cstr_free_all<N>();
 
     delete[] orig_arr; 
     orig_arr = nullptr;

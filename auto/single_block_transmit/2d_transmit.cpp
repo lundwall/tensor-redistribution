@@ -58,5 +58,5 @@ int main(int argc, char** argv){
         }
     }
 
-    term(current_array, new_array);
+    term<T, N>(current_array, new_array);
 }
