@@ -16,11 +16,14 @@
 #define SUB_NJ 4500
 
 #define RUNS 100
-#define CHUNK_SIZE 4050000 // 900*4500, 1/6 of all the data
-#define NUM_CHUNKS SUB_NI*SUB_NJ/CHUNK_SIZE
+// #define CHUNK_SIZE 4050000 // 900*4500, 1/6 of all the data
+// #define NUM_CHUNKS SUB_NI*SUB_NJ/CHUNK_SIZE
 
 int main(int argc, char** argv)
 {
+    int CHUNK_SIZE = atoi(argv[1]);
+    int NUM_CHUNKS = SUB_NI*SUB_NJ/CHUNK_SIZE;
+
     int size, rank, received_threads;
     std::string name_string = "2d_transmit_manual"+std::string(std::getenv("OMP_NUM_THREADS"));
     const char* liblsb_fname = name_string.c_str();
@@ -31,7 +34,8 @@ int main(int argc, char** argv)
     LSB_Init(liblsb_fname, 0);
     LSB_Set_Rparam_int("rank", rank);
     int max_threads = omp_get_max_threads();
-    LSB_Set_Rparam_int("threads", max_threads);
+    // LSB_Set_Rparam_int("threads", max_threads);
+    LSB_Set_Rparam_int("chunk size", CHUNK_SIZE);
 
     // size should be 2!
     if (size != 2)
@@ -65,20 +69,15 @@ int main(int argc, char** argv)
             LSB_Res();
             for (int chunk = 0; chunk < NUM_CHUNKS; chunk++)
             {
-                if (chunk > 0) {
-                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-                }
                 #pragma omp parallel
                 #pragma omp single
                 for (int i = 0; i < CHUNK_SIZE / SUB_NJ; i++)
                 {
                     #pragma omp task
-                    {
-                        int tid = omp_get_thread_num();
-                        printf("Hello world from omp thread %d\n", tid);
-
-                        memcpy(sendArray + chunk * CHUNK_SIZE + i * SUB_NJ, originalArray + (chunk * CHUNK_SIZE / SUB_NJ) * NJ + i * NJ, sizeof(int) * SUB_NJ);
-                    }
+                    memcpy(sendArray + chunk * CHUNK_SIZE + i * SUB_NJ, originalArray + (chunk * CHUNK_SIZE / SUB_NJ) * NJ + i * NJ, sizeof(int) * SUB_NJ);
+                }
+                if (chunk > 0) {
+                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
                 }
                 MPI_Isend(&(sendArray[chunk*CHUNK_SIZE]), CHUNK_SIZE, MPI_INT, 1, chunk, MPI_COMM_WORLD, sendreq);
             }
