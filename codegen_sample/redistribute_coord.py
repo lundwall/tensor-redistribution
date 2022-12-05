@@ -26,7 +26,13 @@ class RedistrArray(object):
 #include <mpi.h>
 #include <iostream>
 #include "dace_helper.h"
-        
+
+struct block_information
+{{
+    int* from;
+    int* to;
+}}; // alternative struct for subarray MPI datatype
+
 int main(int argc, char** argv) {{
     // we only need change this
     int a0 = 4, a1 = 1, a2 = 1; // pgrid0 dims
@@ -46,6 +52,16 @@ int main(int argc, char** argv) {{
     int pgrid_1_coords[{len(array_b.pgrid.grid)}];
     int pgrid_0_rank;
     int pgrid_1_rank;
+    block_information* send_types;
+    int* dst_ranks;
+    block_information* recv_types;
+    int* src_ranks;
+    int* self_src;
+    int* self_dst;
+    int* self_size;
+    int max_sends = 1;
+    int max_recvs = 1;
+
 
     MPI_Cart_create(MPI_COMM_WORLD, {len(array_a.pgrid.grid)}, pgrid_0_dims, pgrid_0_periods, 0, &pgrid_0_comm);
     MPI_Cart_create(MPI_COMM_WORLD, {len(array_b.pgrid.grid)}, pgrid_1_dims, pgrid_1_periods, 0, &pgrid_1_comm);
@@ -54,6 +70,22 @@ int main(int argc, char** argv) {{
     MPI_Comm_rank(pgrid_1_comm, &pgrid_1_rank);
     MPI_Cart_coords(pgrid_1_comm, pgrid_1_rank, {len(array_b.pgrid.grid)}, pgrid_1_coords);
         """
+        for i, (sa, sb) in enumerate(zip(array_a.subshape, array_b.subshape)):
+            sa = f"int({sa})"
+            sb = f"int({sb})"
+            tmp += f"""
+    max_sends *= int_ceil({sa} + {sb} - 1, {sb});
+    max_recvs *= int_ceil({sb} - 1, {sa}) + 1;
+            """
+        tmp += f"""
+    send_types = new block_information[max_sends];
+    dst_ranks = new int[max_sends];
+    recv_types = new block_information[max_recvs];
+    src_ranks = new int[max_recvs];
+    self_src = new int[max_sends * {len(array_a.shape)}];
+    self_dst = new int[max_sends * {len(array_b.shape)}];
+    self_size = new int[max_sends * {len(array_a.shape)}];
+        """
         tmp += f"""
     {{
         int kappa[{len(array_b.shape)}];
@@ -61,6 +93,9 @@ int main(int argc, char** argv) {{
         int xi[{len(array_b.shape)}];
         int pcoords[{len(array_b.shape)}];
         int myrank;
+        int self_copies = 0;
+        int recvs = 0;
+        int sends = 0;
         MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
         """
         tmp += f"""
@@ -70,6 +105,7 @@ int main(int argc, char** argv) {{
             int sizes[{len(array_b.subshape)}] = {{{', '.join([str(s) for s in array_b.subshape])}}};
             int subsizes[{len(array_b.subshape)}];
             int origin[{len(array_b.subshape)}];
+            int to[{len(array_b.subshape)}];
         """
         for i, (sa, sb, cb) in enumerate(zip(array_a.subshape, array_b.subshape, array_b.correspondence)):
             sa = f"int({sa})"
@@ -90,26 +126,43 @@ int main(int argc, char** argv) {{
                 int uo{i} = std::min(int({array_a.subshape[i]}), lo{i} + rem{i});
                 subsizes[{i}] = uo{i} - lo{i};
                 origin[{i}] = {array_b.subshape[i]} - rem{i};
+                to[{i}] = origin[{i}] + subsizes[{i}];
                 rem{i} -= uo{i} - lo{i};
             """
 
         grid_a = array_a.pgrid.grid
-        tmp += f"int cart_rank = get_cart_rank({len(grid_a)}, {array_a.pgrid.name}_dims, pcoords);\n"
+        tmp += f"   int cart_rank = get_cart_rank({len(grid_a)}, {array_a.pgrid.name}_dims, pcoords);\n"
         tmp += f"""
-            if (myrank == cart_rank) {{ // self-copy
-                printf("I am rank %d and I self-copy,  receive from {','.join(['%d'for i in range(len(array_a.pgrid.grid))])} (%d) from ({','.join(['%d'for i in range(len(array_a.shape))])}) size ({','.join(['%d'for i in range(len(array_a.shape))])})\\n", myrank,
+                if (myrank == cart_rank) {{ // self-copy"""
+        for i in range(len(array_b.shape)):
+            tmp += f"""
+                    self_src[self_copies * {len(array_a.shape)} + {i}] = lo{i};
+                    self_dst[self_copies * {len(array_b.shape)} + {i}] = origin[{i}];
+                    self_size[self_copies * {len(array_a.shape)} + {i}] = subsizes[{i}];
+        """
+        tmp += f"""
+                    self_copies++;
+                    printf("I am rank %d and I self-copy,  receive from {','.join(['%d'for i in range(len(array_a.pgrid.grid))])} (%d) from ({','.join(['%d'for i in range(len(array_a.shape))])}) size ({','.join(['%d'for i in range(len(array_a.shape))])})\\n", myrank,
                     {','.join([('pcoords['+str(i)+']') for i in range(len(array_a.pgrid.grid))])},
                     cart_rank, 
                     {','.join([('origin['+str(i)+']') for i in range(len(array_a.shape))])}, 
                     {','.join([('subsizes['+str(i)+']') for i in range(len(array_a.shape))])});
-            }} else {{
-                printf("I am rank %d and I receive from {','.join(['%d'for i in range(len(array_a.pgrid.grid))])} (%d) in ({','.join(['%d'for i in range(len(array_a.shape))])}) size ({','.join(['%d'for i in range(len(array_a.shape))])})\\n", myrank,
-                    {','.join([('pcoords['+str(i)+']') for i in range(len(array_a.pgrid.grid))])},
-                    cart_rank, 
-                    {','.join([('origin['+str(i)+']') for i in range(len(array_a.shape))])}, 
-                    {','.join([('subsizes['+str(i)+']') for i in range(len(array_a.shape))])});            
-            }}
-        """
+
+                }} else {{
+                    recv_types[recvs].from = new int[{len(array_b.shape)}];
+                    std::memcpy(recv_types[recvs].from, origin, sizeof(int)*{len(array_b.shape)});
+                    recv_types[recvs].to = new int[{len(array_b.shape)}];
+                    std::memcpy(recv_types[recvs].to, to, sizeof(int)*{len(array_b.shape)});
+                    src_ranks[recvs] = cart_rank;
+                    recvs++;
+
+                    printf("I am rank %d and I receive from {','.join(['%d'for i in range(len(array_a.pgrid.grid))])} (%d) in ({','.join(['%d'for i in range(len(array_a.shape))])}) size ({','.join(['%d'for i in range(len(array_a.shape))])})\\n", myrank,
+                        {','.join([('pcoords['+str(i)+']') for i in range(len(array_a.pgrid.grid))])},
+                        cart_rank, 
+                        {','.join([('origin['+str(i)+']') for i in range(len(array_a.shape))])}, 
+                        {','.join([('subsizes['+str(i)+']') for i in range(len(array_a.shape))])});            
+                }}
+    """
         for i in range(len(array_b.shape)):
             tmp += f"}}"
         tmp += "}"
@@ -120,6 +173,7 @@ int main(int argc, char** argv) {{
             int sizes[{len(array_a.subshape)}] = {{{', '.join([str(s) for s in array_a.subshape])}}};
             int subsizes[{len(array_a.subshape)}];
             int origin[{len(array_a.subshape)}];
+            int to[{len(array_a.subshape)}];
         """
         for i in range(len(array_b.shape)):
             pcoord = f"{array_a.pgrid.name}_coords[{array_a.correspondence[i]}]"
@@ -141,19 +195,28 @@ int main(int argc, char** argv) {{
                 int uo{i} = (idx{i}_dst == kappa[{i}] - 1 ? {sb} + lambda[{i}] - idx{i}_dst * {sa} : {sa});
                 subsizes[{i}] = uo{i} - lo{i};
                 origin[{i}] = lo{i};
+                to[{i}] = origin[{i}] + subsizes[{i}];
                 pcoords[actual_idx{i}] = idx{i};
             """
 
         grid_b = array_b.pgrid.grid
-        tmp += f"int cart_rank = get_cart_rank({len(grid_b)}, {array_b.pgrid.name}_dims, pcoords);\n"
+        tmp += f"    int cart_rank = get_cart_rank({len(grid_b)}, {array_b.pgrid.name}_dims, pcoords);\n"
         tmp += f"""
-        if (myrank != cart_rank) {{ // not self-copy
-            printf("I am rank %d and I send to {','.join(['%d'for i in range(len(array_b.pgrid.grid))])} (%d) from ({','.join(['%d'for i in range(len(array_b.shape))])}) size ({','.join(['%d'for i in range(len(array_b.shape))])})\\n", myrank,
-                {','.join([('pcoords['+str(i)+']') for i in range(len(array_b.pgrid.grid))])},
-                cart_rank, 
-                {','.join([('origin['+str(i)+']') for i in range(len(array_b.shape))])}, 
-                {','.join([('subsizes['+str(i)+']') for i in range(len(array_b.shape))])});
-        }}
+            if (myrank != cart_rank) {{ // not self-copy
+                send_types[sends].from = new int[{len(array_a.shape)}];
+                std::memcpy(send_types[sends].from, origin, sizeof(int)*{len(array_a.shape)});
+                send_types[sends].to = new int[{len(array_a.shape)}];
+                std::memcpy(send_types[sends].to, to, sizeof(int)*{len(array_a.shape)});
+                dst_ranks[sends] = cart_rank;
+                sends++;
+
+                printf("I am rank %d and I send to {','.join(['%d'for i in range(len(array_b.pgrid.grid))])} (%d) from ({','.join(['%d'for i in range(len(array_b.shape))])}) size ({','.join(['%d'for i in range(len(array_b.shape))])})\\n", myrank,
+                    {','.join([('pcoords['+str(i)+']') for i in range(len(array_b.pgrid.grid))])},
+                    cart_rank, 
+                    {','.join([('origin['+str(i)+']') for i in range(len(array_b.shape))])}, 
+                    {','.join([('subsizes['+str(i)+']') for i in range(len(array_b.shape))])});
+
+            }}
         """
         for i in range(len(array_b.shape)):
             tmp += f"}}"
