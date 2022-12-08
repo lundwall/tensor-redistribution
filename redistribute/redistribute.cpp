@@ -11,58 +11,8 @@
 #include <fstream>
 #include <cstring>
 
-struct block_description
-{
-	int* from;
-	int* to;
-};
-
-struct redistribution_info 
-{
-	MPI_Comm send_comm;
-    MPI_Group send_group;
-    int* send_coords;
-    int* send_pgrid;
-    int send_rank;
-    int send_size;
-    int send_dimension;
-    block_description* send_block_descriptions;
-    int* send_to_ranks;
-    int send_count;
-
-
-    MPI_Comm recv_comm;
-    MPI_Group recv_group;
-    int* recv_coords;
-    int* recv_pgrid;
-    int recv_rank;
-    int recv_size;
-    int recv_dimension;
-    block_description* recv_block_descriptions;
-    int* recv_from_ranks;
-    int recv_count;
-
-    int* total_array_size;
-
-    int* self_src;
-    int* self_dst;
-    int* self_size;
-    int copy_count;
-};
-
-int int_ceil(int x, int y)
-{
-    return (x + y - 1) / y;
-}
-
-int get_cart_rank(int grid_length, const int* grid, const int* coords) {
-    int rank = coords[0];
-    for (auto i = 1; i < grid_length; ++i) {
-        rank *= grid[i];
-        rank += coords[i];
-    }
-    return rank;
-}
+#include "dace_helper.h"
+#include "redistribute_by_dimension.hpp"
 
 void parse_array_dimension(std::vector<int>& dimension_vector, std::string input_value)
 {
@@ -121,7 +71,7 @@ void check_parameter_valid(std::vector<int>& pgrid_send, std::vector<int>& pgrid
 
 }
 
-void calculate_redistribution_blocks(int current_dim, int total_dim, int* pcoords, int* subsize, int* from, int* to, int* lo_send, redistribution_info* state, block_description* recv_block_descriptions, int* recv_from_ranks, int myrank)
+void calculate_recv_redistribution_blocks(int current_dim, int total_dim, int* pcoords, int* subsize, int* from, int* to, int* lo_send, redistribution_info* state, block_description* recv_block_descriptions, int* recv_from_ranks, int myrank)
 {
 	if (total_dim == current_dim)
 	{
@@ -137,9 +87,9 @@ void calculate_redistribution_blocks(int current_dim, int total_dim, int* pcoord
 		}
 		else
 		{
-			std::memcpy(state->self_src+state->copy_count*state->send_dimension, lo_send, state->send_dimension);
-			std::memcpy(state->self_dst+state->copy_count*state->recv_dimension, from, state->recv_dimension);
-			std::memcpy(state->self_size+state->copy_count*state->send_dimension, subsize, state->send_dimension);
+			std::memcpy(state->self_src+state->copy_count*state->send_dimension, lo_send, state->send_dimension*sizeof(int));
+			std::memcpy(state->self_dst+state->copy_count*state->recv_dimension, from, state->recv_dimension*sizeof(int));
+			std::memcpy(state->self_size+state->copy_count*state->send_dimension, subsize, state->send_dimension*sizeof(int));
 			state->copy_count++;
 		}
 		return;
@@ -162,9 +112,61 @@ void calculate_redistribution_blocks(int current_dim, int total_dim, int* pcoord
         to[current_dim] = (recv_array_dimension - rem) + (uo - lo);
         lo_send[current_dim] = lo;
        	rem -= uo - lo;
-       	calculate_redistribution_blocks(current_dim + 1, total_dim, pcoords, subsize, from, to, lo_send, state, recv_block_descriptions, recv_from_ranks, myrank);
+       	calculate_recv_redistribution_blocks(current_dim + 1, total_dim, pcoords, subsize, from, to, lo_send, state, recv_block_descriptions, recv_from_ranks, myrank);
 	}
 }
+
+void calculate_send_redistribution_blocks(int current_dim, int total_dim, int* pcoords, int* subsize, int* from, int* to, int* lo_send, redistribution_info* state, block_description* send_block_descriptions, int* send_to_ranks, int myrank)
+{
+	if (total_dim == current_dim)
+	{
+		int cart_rank = get_cart_rank(state->recv_dimension, state->recv_pgrid, pcoords);
+		if (cart_rank != myrank)
+		{
+			send_block_descriptions[state->send_count].from = new int[state->send_dimension]();
+			send_block_descriptions[state->send_count].to = new int[state->send_dimension]();
+			std::memcpy(send_block_descriptions[state->send_count].from, from, sizeof(int)*total_dim);
+			std::memcpy(send_block_descriptions[state->send_count].to, to, sizeof(int)*total_dim);
+			send_to_ranks[state->send_count] = cart_rank;
+			state->send_count++;
+		}
+		return;
+	}
+
+	int send_array_dimension = state->total_array_size[current_dim] / state->send_pgrid[current_dim];  // Bx
+	int recv_array_dimension = state->total_array_size[current_dim] / state->recv_pgrid[current_dim];  // By
+	state->send_array_dimension[current_dim] = send_array_dimension;
+	state->recv_array_dimension[current_dim] = recv_array_dimension;
+	state->send_element_count *= send_array_dimension;
+	state->recv_element_count *= recv_array_dimension;
+	int lp = std::max(0, (state->send_coords[current_dim] * send_array_dimension) / recv_array_dimension);
+	int up = std::min(state->recv_pgrid[current_dim], int_ceil((state->send_coords[current_dim] + 1) * send_array_dimension, recv_array_dimension));
+
+	for (auto idx = lp; idx < up; ++idx)
+	{
+        int actual_idx0 = current_dim;
+
+        int xi = (idx * recv_array_dimension) / send_array_dimension;
+        int lambda = idx * recv_array_dimension % send_array_dimension;
+        int kappa = int_ceil(recv_array_dimension + lambda, send_array_dimension);
+        int idx_dst = state->send_coords[current_dim] - xi;
+
+        if (idx_dst < 0 || idx_dst >= kappa) continue;
+        int lo = (idx_dst == 0 ? lambda : 0);
+        int uo = (idx_dst == kappa - 1 ? recv_array_dimension + lambda - idx_dst * send_array_dimension : send_array_dimension);
+        subsize[current_dim] = uo - lo;
+        from[current_dim] = lo;
+        pcoords[current_dim] = idx;
+        to[current_dim] = from[current_dim] + subsize[current_dim];
+        calculate_send_redistribution_blocks(current_dim+1, total_dim, pcoords, subsize, from, to, lo_send, state, send_block_descriptions, send_to_ranks, myrank);
+	}
+}
+
+void redistribute(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in)
+{
+	redistribute_by_dimension(state, A, A_shape_in, B, B_shape_in);
+}
+
 
 void fill_redistribution_information(redistribution_info* state, int max_sends, int max_recvs, int myrank)
 {
@@ -175,18 +177,25 @@ void fill_redistribution_information(redistribution_info* state, int max_sends, 
 	int* lo_send = new int[state->send_dimension]();
 	state->recv_block_descriptions = new block_description[max_recvs];
 	state->recv_from_ranks = new int[max_recvs];
+	state->send_block_descriptions = new block_description[max_sends];
+	state->send_to_ranks = new int[max_sends];
+	state->send_array_dimension = new int[state->send_dimension]();
+	state->recv_array_dimension = new int[state->recv_dimension]();
+	state->send_element_count = 1;
+	state->recv_element_count = 1;
 
-	calculate_redistribution_blocks(0, state->send_dimension, pcoords, subsize, from, to, lo_send, state, state->recv_block_descriptions, state->recv_from_ranks, myrank);
+	calculate_recv_redistribution_blocks(0, state->send_dimension, pcoords, subsize, from, to, lo_send, state, state->recv_block_descriptions, state->recv_from_ranks, myrank);
+	calculate_send_redistribution_blocks(0, state->recv_dimension, pcoords, subsize, from, to, lo_send, state, state->send_block_descriptions, state->send_to_ranks, myrank);
+	
 	return;
 }
 
-void print_debug_message(redistribution_info* state)
+void print_debug_message(redistribution_info* state, int myrank)
 {
 	for (int i = 0; i < state->recv_count; i++)
 	{
-		std::string message = "";
-		message += " from ";
-		// print block i information from
+		std::string message = "I am rank " + std::to_string(myrank) + " and I receive from " + std::to_string(state->recv_from_ranks[i]);
+		message += " in new layout it's from ";
 		for (int j = 0; j < state->recv_dimension; j++)
 		{
 			message += " " + std::to_string(state->recv_block_descriptions[i].from[j]);
@@ -199,12 +208,49 @@ void print_debug_message(redistribution_info* state)
 		}
 		std::cout << message << std::endl;
 	}
+
+	for (int i = 0; i < state->copy_count; i++)
+	{
+		std::string message = "I am rank " + std::to_string(myrank) + " and I self-copy, src is ";
+		for (int j = 0; j < state->send_dimension; j++)
+		{
+			message += " " + std::to_string(state->self_src[i*state->copy_count+j]);
+		}
+		message += " dst is ";
+		for (int j = 0; j < state->recv_dimension; j++)
+		{
+			message += " " + std::to_string(state->self_dst[i*state->copy_count+j]);
+		}
+		message += " size is ";
+		for (int j = 0; j < state->send_dimension; j++)
+		{
+			message += " " + std::to_string(state->self_size[i*state->copy_count+j]);
+		}
+		std::cout << message << std::endl;
+	}
+
+	for (int i = 0; i < state->send_count; i++)
+	{
+		std::string message = "I am rank " + std::to_string(myrank) + " and I send to " + std::to_string(state->send_to_ranks[i]);
+		message += " in old layout it's from ";
+		for (int j = 0; j < state->send_dimension; j++)
+		{
+			message += " " + std::to_string(state->send_block_descriptions[i].from[j]);
+		}
+
+		message += " to ";
+		for (int j = 0; j < state->recv_dimension; j++)
+		{
+			message += " " + std::to_string(state->send_block_descriptions[i].to[j]);
+		}
+		std::cout << message << std::endl;
+	}
 }
 
 int main(int argc, char** argv)
 {
-	int size, rank;
-    MPI_Init(&argc, &argv);
+	int size, rank, received_threads;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &received_threads);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     printf("my rank is %d\n", rank);
@@ -268,6 +314,7 @@ int main(int argc, char** argv)
     state->self_src = new int[max_sends * state->send_dimension];
     state->self_dst = new int[max_recvs * state->recv_dimension];
     state->self_size = new int[max_sends * state->send_dimension];
+    std::cout << "max_sends = " << max_sends << " max_recvs = " << max_recvs << std::endl;
 
 	check_parameter_valid(pgrid_send, pgrid_recv, total_array_size, size);
 
@@ -300,6 +347,11 @@ int main(int argc, char** argv)
 
     fill_redistribution_information(state, max_sends, max_recvs, rank);
 
-    print_debug_message(state);
+    print_debug_message(state, rank);
+    int* A = new int[state->send_element_count];
+    int* B = new int[state->recv_element_count];
+
+    redistribute(state, A, state->send_array_dimension, B, state->recv_array_dimension);
+    MPI_Finalize();
 	return 0;
 }
