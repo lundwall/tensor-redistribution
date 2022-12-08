@@ -19,7 +19,12 @@ auto as_tuple(const std::array<T, N> &arr) {
     return as_tuple(arr, std::make_index_sequence<N>{});
 }
 
-void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in)
+void redistribute_by_dimension_template()
+{
+
+}
+
+void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE)
 {
 	switch(state->send_dimension)
 	{
@@ -38,27 +43,45 @@ void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_
     		set_lsb_chunk_size<2>(chunk_num);
 		    for (auto idx = 0; idx < state->send_count; ++idx)
 		    {
-		    	NdIndices<2> from; NdIndices<2> to;
-		    	int from_int[2]; int to_int[2];
-		    	std::memcpy(from_int, state->send_block_descriptions[idx].from, 2*sizeof(int));
-		    	std::memcpy(to_int, state->send_block_descriptions[idx].to, 2*sizeof(int));
-		    	auto from_tup = as_tuple(from_int);
-		    	auto to_tup = as_tuple(to_int);
-		    	LSB_Res();
-		    	send<int, 2>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num);
-		    	LSB_Rec(0);
+		    	if (MODE == "manual")
+		    	{
+			    	NdIndices<2> from; NdIndices<2> to;
+			    	int from_int[2]; int to_int[2];
+			    	std::memcpy(from_int, state->send_block_descriptions[idx].from, 2*sizeof(int));
+			    	std::memcpy(to_int, state->send_block_descriptions[idx].to, 2*sizeof(int));
+			    	auto from_tup = as_tuple(from_int);
+			    	auto to_tup = as_tuple(to_int);
+			    	LSB_Res();
+			    	send<int, 2>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num);
+			    	LSB_Rec(0);
+		    	}
+		    	else
+		    	{
+		    		LSB_Res();
+		    		MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
+		    		LSB_Rec(0);
+		    	}
 		    }
 
 		    for (auto idx = 0; idx < state->recv_count; ++idx) 
 		    {
-		    	int from_int[2]; int to_int[2];
-		    	std::memcpy(from_int, state->recv_block_descriptions[idx].from, 2*sizeof(int));
-		    	std::memcpy(to_int, state->recv_block_descriptions[idx].to, 2*sizeof(int));
-		    	auto from_tup = as_tuple(from_int);
-		    	auto to_tup = as_tuple(to_int);
-		    	LSB_Res();
-		    	recv<int, 2>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num);
-		    	LSB_Rec(0);
+		    	if (MODE == "manual")
+		    	{
+			    	int from_int[2]; int to_int[2];
+			    	std::memcpy(from_int, state->recv_block_descriptions[idx].from, 2*sizeof(int));
+			    	std::memcpy(to_int, state->recv_block_descriptions[idx].to, 2*sizeof(int));
+			    	auto from_tup = as_tuple(from_int);
+			    	auto to_tup = as_tuple(to_int);
+			    	LSB_Res();
+			    	recv<int, 2>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num);
+			    	LSB_Rec(1);
+		    	}
+		    	else
+		    	{
+		    		LSB_Res();
+		    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		    		LSB_Rec(0);
+		    	}
 		    }
 
 		    int* copy_source = _inp_buffer;

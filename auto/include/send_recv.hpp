@@ -277,7 +277,7 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
             memcpy(buffer + buffer_start, source + source_start, sizeof(T) * row_length);
         };
 
-        n_for<N - 1>(zero_NdIndices<N - 1>, chunk_size_1, ele_iter);
+        n_task_for<N - 1>(zero_NdIndices<N - 1>, chunk_size_1, ele_iter);
 
         if (!is_first) {
             MPI_Waitall(1, &send_req, MPI_STATUSES_IGNORE);
@@ -325,7 +325,7 @@ void recv(T* target, int other_rank, NdIndices<N> new_size, NdIndices<N> from, N
             memcpy(target + target_start, buffer + buffer_start, sizeof(T) * row_length);
         };
 
-        n_for<N - 1>(zero_NdIndices<N - 1>, chunk_size_1, ele_iter);
+        n_task_for<N - 1>(zero_NdIndices<N - 1>, chunk_size_1, ele_iter);
     };
 
     // indices in chunk_num
