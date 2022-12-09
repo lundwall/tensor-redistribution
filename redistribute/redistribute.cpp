@@ -4,8 +4,8 @@
  */
 
 #include "redistribute.hpp"
-#define MODE "datatype"
-
+#define MODE "manual"
+#define DEBUG false
 
 int main(int argc, char** argv)
 {
@@ -13,7 +13,6 @@ int main(int argc, char** argv)
     MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &received_threads);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("my rank is %d\n", rank);
 
 	std::vector<int> pgrid_send;
 	std::vector<int> pgrid_recv;
@@ -54,11 +53,24 @@ int main(int argc, char** argv)
 
     fill_redistribution_information(state, rank);
 
-    print_debug_message(state, rank);
+    if (DEBUG)
+    	print_debug_message(state, rank);
 
     int* A = new int[state->send_element_count];
     int* B = new int[state->recv_element_count];
+
+    for (int i = 0; i < state->send_element_count; i++)
+    {
+    	A[i] = i;
+    }
+
+    for (int i = 0; i < state->recv_element_count; i++)
+    {
+    	B[i] = 0;
+   	}
+
     redistribute(state, A, state->send_array_dimension, B, state->recv_array_dimension, MODE);
+
     MPI_Finalize();
 	return 0;
 }
