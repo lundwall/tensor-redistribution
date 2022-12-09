@@ -91,7 +91,7 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
     	{
     		LSB_Res();
     		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    		LSB_Rec(0);
+    		LSB_Rec(1);
     	}
     }
 
