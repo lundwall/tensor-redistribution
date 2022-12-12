@@ -3,6 +3,7 @@
 #include <validation.hpp>
 #include <liblsb.h>
 #include "utils.hpp"
+#define RUN 10
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -59,41 +60,47 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
     std::string name = std::to_string(N) + "d_redistribute";
     LSB_Init(name.c_str(), 0);
 	set_lsb_chunk_size<N>(chunk_num_tup);
-    for (auto idx = 0; idx < state->send_count; ++idx)
-    {
-    	if (MODE == "manual")
-    	{
-	    	auto from_tup = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-	    	auto to_tup = array_to_tuple<N>(state->send_block_descriptions[idx].to);
-	    	LSB_Res();
-	    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num_tup);
-	    	LSB_Rec(0);
-    	}
-    	else
-    	{
-    		LSB_Res();
-    		MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
-    		LSB_Rec(0);
-    	}
-    }
+	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
+	{
+	    for (auto idx = 0; idx < state->send_count; ++idx)
+	    {
+	    	if (MODE == "manual")
+	    	{
+		    	auto from_tup = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+		    	auto to_tup = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+		    	LSB_Res();
+		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num_tup);
+		    	LSB_Rec(run_idx);
+	    	}
+	    	else
+	    	{
+	    		LSB_Res();
+	    		MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
+	    		LSB_Rec(run_idx);
+	    	}
+	    }
+	}
 
-    for (auto idx = 0; idx < state->recv_count; ++idx) 
-    {
-    	if (MODE == "manual")
-    	{
-		    auto from_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
-	    	auto to_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
-	    	LSB_Res();
-	    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num_tup);
-	    	LSB_Rec(1);
-    	}
-    	else
-    	{
-    		LSB_Res();
-    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    		LSB_Rec(1);
-    	}
-    }
+	for (auto run_idx = 0; run_idx < RUN; run_idx++)
+	{
+	    for (auto idx = 0; idx < state->recv_count; ++idx) 
+	    {
+	    	if (MODE == "manual")
+	    	{
+			    auto from_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
+		    	auto to_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
+		    	LSB_Res();
+		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num_tup);
+		    	LSB_Rec(RUN + run_idx);
+	    	}
+	    	else
+	    	{
+	    		LSB_Res();
+	    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	    		LSB_Rec(RUN + run_idx);
+	    	}
+	    }
+	}
 
     int* copy_source = _inp_buffer;
     int* copy_dest = _out_buffer;
