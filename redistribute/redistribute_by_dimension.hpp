@@ -65,10 +65,10 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
+	    	auto from_tup = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+		    auto to_tup = array_to_tuple<N>(state->send_block_descriptions[idx].to);
 	    	if (MODE == "manual")
 	    	{
-		    	auto from_tup = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-		    	auto to_tup = array_to_tuple<N>(state->send_block_descriptions[idx].to);
 		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num_tup);
 	    	}
 	    	else
@@ -79,10 +79,10 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 	    for (auto idx = 0; idx < state->recv_count; ++idx) 
 	    {
+	    	auto from_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
+		    auto to_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
 	    	if (MODE == "manual")
 	    	{
-			    auto from_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
-		    	auto to_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
 		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num_tup);
 	    	}
 	    	else
