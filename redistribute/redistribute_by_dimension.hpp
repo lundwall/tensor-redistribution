@@ -3,7 +3,7 @@
 #include <validation.hpp>
 #include <liblsb.h>
 #include "utils.hpp"
-#define RUN 10
+#define RUN 1
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -60,16 +60,30 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
     std::string name = std::to_string(N) + "d_redistribute";
     LSB_Init(name.c_str(), 0);
 	set_lsb_chunk_size<N>(chunk_num_tup);
+
 	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
 	{
+		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
+		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
+		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
+		NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
+		for (auto idx = 0; idx < state->send_count; ++idx)
+		{
+			from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+		    to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+		}
+		for (auto idx = 0; idx < state->recv_count; ++idx) 
+	    {
+	    	from_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
+		    to_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
+	    }
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
-	    	auto from_tup = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-		    auto to_tup = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+	    	
 	    	if (MODE == "manual")
 	    	{
-		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup, to_tup, chunk_num_tup);
+		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup);
 	    	}
 	    	else
 	    	{
@@ -79,11 +93,9 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 	    for (auto idx = 0; idx < state->recv_count; ++idx) 
 	    {
-	    	auto from_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
-		    auto to_tup = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
 	    	if (MODE == "manual")
 	    	{
-		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup, to_tup, chunk_num_tup);
+		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
 	    	}
 	    	else
 	    	{
