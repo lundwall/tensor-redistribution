@@ -3,7 +3,8 @@
 #include <validation.hpp>
 #include <liblsb.h>
 #include "utils.hpp"
-#define RUN 1
+#include "send_recv_5d.hpp"
+#define RUN 10
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -63,6 +64,7 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
 	{
+		printf("Run %d", run_idx);
 		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
 		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
 		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
@@ -80,10 +82,10 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
-	    	
 	    	if (MODE == "manual")
 	    	{
-		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup);
+		    	// send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup);
+		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to);
 	    	}
 	    	else
 	    	{
@@ -95,7 +97,8 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	    {
 	    	if (MODE == "manual")
 	    	{
-		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
+		    	// recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
+		    	recv_5d(_out_buffer, state->recv_from_ranks[idx], B_shape_in, state->recv_block_descriptions[idx].from, state->recv_block_descriptions[idx].to);
 	    	}
 	    	else
 	    	{
