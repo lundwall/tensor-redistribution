@@ -283,7 +283,7 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
         }else{
             is_first = false;
         }
-        MPI_Isend(&(buffer[chunk_total * chunk_id]), chunk_total, datatype, other_rank, chunk_id, MPI_COMM_WORLD, &request[0]);
+        MPI_Isend(&(buffer[chunk_total * chunk_id]), chunk_total, datatype, other_rank, chunk_id, MPI_COMM_WORLD, request);
     };
 
     n_for<N>(zero_NdIndices<N>, chunk_num, chunk_iter);
