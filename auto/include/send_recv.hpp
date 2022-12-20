@@ -245,7 +245,7 @@ inline constexpr void n_task_for(NdIndices<N> begin, NdIndices<N> end, Callable&
 }
 
 template <typename T, size_t N>
-void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> from, NdIndices<N> to, NdIndices<N> chunk_num){
+void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> from, NdIndices<N> to, NdIndices<N> chunk_num, MPI_Request* request){
     NdIndices<N> range = to - from;
     check_divisible<N>(range, chunk_num);
 
@@ -261,7 +261,6 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
     
     MPI_Datatype datatype = to_MPI_type<T>;
     T* buffer = new T[sending_total];
-    MPI_Request send_req;
     bool is_first = true;
 
     // indices in chunk_num
@@ -280,15 +279,14 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
         n_task_for<N - 1>(zero_NdIndices<N - 1>, chunk_size_1, ele_iter);
 
         if (!is_first) {
-            MPI_Waitall(1, &send_req, MPI_STATUSES_IGNORE);
+            MPI_Waitall(1, &request[0], MPI_STATUSES_IGNORE);
         }else{
             is_first = false;
         }
-        MPI_Isend(&(buffer[chunk_total * chunk_id]), chunk_total, datatype, other_rank, chunk_id, MPI_COMM_WORLD, &send_req);
+        MPI_Isend(&(buffer[chunk_total * chunk_id]), chunk_total, datatype, other_rank, chunk_id, MPI_COMM_WORLD, &request[0]);
     };
 
     n_for<N>(zero_NdIndices<N>, chunk_num, chunk_iter);
-    MPI_Waitall(1, &send_req, MPI_STATUSES_IGNORE);
 
     delete[] buffer;
 }

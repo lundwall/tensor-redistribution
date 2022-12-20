@@ -128,7 +128,8 @@ int main(int argc, char** argv){
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
             LSB_Res();
-            send<T, N>(current_array, 1, current_size, from, to, chunk_num);
+            send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0]);
+            MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
             LSB_Rec(k);
         }
     }
@@ -184,7 +185,8 @@ int main(int argc, char** argv){
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
             LSB_Res();
-            send_5d(current_array, 1, current_size_int, from_int, to_int);
+            send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0]);
+            MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             LSB_Rec(k);
         }
     }

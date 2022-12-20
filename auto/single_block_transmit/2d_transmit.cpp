@@ -33,10 +33,13 @@ int main(int argc, char** argv){
     validate_init<T, N>(current_array, current_size);
     validate_init<T, N>(new_array, new_size);
 
+    MPI_Request* sendreq = new MPI_Request[1];
+
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
             LSB_Res();
-            send<T, N>(current_array, 1, current_size, from, to, chunk_num);
+            send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0]);
+            MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
             LSB_Rec(k);
         }
     }

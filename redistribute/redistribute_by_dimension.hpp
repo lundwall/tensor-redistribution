@@ -4,7 +4,7 @@
 #include <liblsb.h>
 #include "utils.hpp"
 #include "send_recv_5d.hpp"
-#define RUN 10
+#define RUN 100
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -83,10 +83,13 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	    {
 	    	if (MODE == "manual")
 	    	{
-		    	// send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup);
 		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, &state->send_req[idx]);
 	    	}
-	    	else
+	    	else if (MODE == "template")
+			{
+		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup, &state->send_req[idx]);
+			}
+			else
 	    	{
 	    		MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
 	    	}
@@ -96,9 +99,12 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	    {
 	    	if (MODE == "manual")
 	    	{
-		    	// recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
 		    	recv_5d(_out_buffer, state->recv_from_ranks[idx], B_shape_in, state->recv_block_descriptions[idx].from, state->recv_block_descriptions[idx].to);
 	    	}
+			else if (MODE == "template")
+			{
+		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
+			}
 	    	else
 	    	{
 	    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, MPI_Request *request) {
-    // order of dimensions might be wrong ¯\_(ツ)_/¯
     int SUB_NI = to[0] - from[0];
     int SUB_NJ = to[1] - from[1];
     int SUB_NK = to[2] - from[2];
@@ -33,7 +32,6 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
 }
 
 void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to) {
-    // order of dimensions might be wrong ¯\_(ツ)_/¯
     int SUB_NI = to[0] - from[0];
     int SUB_NJ = to[1] - from[1];
     int SUB_NK = to[2] - from[2];
