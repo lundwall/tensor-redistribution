@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 
-void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, MPI_Request *request) {
+void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, MPI_Request *request, int* buffer) {
     int SUB_NI = to[0] - from[0];
     int SUB_NJ = to[1] - from[1];
     int SUB_NK = to[2] - from[2];
@@ -13,7 +13,6 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
     int NK = current_size[2];
     int NL = current_size[3];
     int NM = current_size[4];
-    int* buffer = new int[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     #pragma omp parallel for collapse(4)
     for (int i = 0; i < SUB_NI; i++)
     {
@@ -28,7 +27,7 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
             }
         }
     }
-    MPI_Isend(&(buffer[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request[0]);
+    MPI_Isend(buffer, SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request[0]);
 }
 
 void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to) {

@@ -4,7 +4,7 @@
 #include <liblsb.h>
 #include "utils.hpp"
 #include "send_recv_5d.hpp"
-#define RUN 100
+#define RUN 1
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -62,32 +62,41 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
     LSB_Init(name.c_str(), 0);
 	set_lsb_chunk_size<N>(chunk_num_tup);
 
+	size_t allocate_number = std::max(state->send_count, 1);
+	int** send_buffers = new int*[allocate_number];
+
+	NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
+	NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
+	NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
+	NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
+
+	for (auto idx = 0; idx < state->send_count; ++idx)
+	{
+		from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+		to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+		NdIndices<N> range = to_tup_send[idx] - from_tup_send[idx];
+		int sending_total = get_product<N>(range);
+		send_buffers[idx] = new int[sending_total];
+		fflush(stdout);
+	}
+	for (auto idx = 0; idx < state->recv_count; ++idx) 
+	{
+		from_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
+		to_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
+	}
+
 	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
 	{
-		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
-		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
-		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
-		NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
-		for (auto idx = 0; idx < state->send_count; ++idx)
-		{
-			from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-		    to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
-		}
-		for (auto idx = 0; idx < state->recv_count; ++idx) 
-	    {
-	    	from_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
-		    to_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
-	    }
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
 	    	if (MODE == "manual")
 	    	{
-		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, &state->send_req[idx]);
+		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, &state->send_req[idx], send_buffers[idx]);
 	    	}
 	    	else if (MODE == "template")
 			{
-		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup, &state->send_req[idx]);
+		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup, &state->send_req[idx], send_buffers[idx]);
 			}
 			else
 	    	{
@@ -115,6 +124,15 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 		LSB_Rec(run_idx);
 	}
+
+
+	for (auto idx = 0; idx < state->send_count; ++idx)
+	{
+		delete[] send_buffers[idx];
+	}
+
+	delete[] send_buffers;
+	send_buffers = nullptr;
 
     int* copy_source = _inp_buffer;
     int* copy_dest = _out_buffer;

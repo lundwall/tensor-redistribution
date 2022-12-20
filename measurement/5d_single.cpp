@@ -91,6 +91,10 @@ int main(int argc, char** argv){
     NdIndices<N> from_recv = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
     NdIndices<N> to_recv = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
 
+    NdIndices<N> range = to - from;
+    size_t sending_total = get_product<N>(range);
+    T* send_buffer = new T[sending_total];
+
     int from_int[N] = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
     int to_int[N] = {TO_I, TO_J, TO_K, TO_L, TO_M};
     int from_rec_int[N] = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
@@ -129,7 +133,7 @@ int main(int argc, char** argv){
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
             LSB_Res();
-            send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0]);
+            send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
             MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
             LSB_Rec(k);
         }
@@ -186,7 +190,7 @@ int main(int argc, char** argv){
     if (rank == 0) {
         for (int k = 0; k < RUNS; ++k) {
             LSB_Res();
-            send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0]);
+            send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             LSB_Rec(k);
         }
@@ -256,4 +260,6 @@ int main(int argc, char** argv){
     current_array = nullptr;
     delete[] new_array;
     new_array = nullptr;
+    delete[] send_buffer;
+    send_buffer = nullptr;
 }
