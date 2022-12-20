@@ -1,8 +1,11 @@
+#ifndef ONESIDE_HELPER_H
+#define ONESIDE_HELPER_H
+
 #include <omp.h>
 #include <mpi.h>
 #include <stdlib.h>
 
-void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, MPI_Request *request, int* buffer) {
+void prepare_send_buffer(int* source, int* current_size, int* from, int* to, int* buffer) {
     int SUB_NI = to[0] - from[0];
     int SUB_NJ = to[1] - from[1];
     int SUB_NK = to[2] - from[2];
@@ -27,10 +30,9 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
             }
         }
     }
-    MPI_Isend(buffer, SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request[0]);
 }
 
-void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to) {
+void unpack_recv_buffer(int* target, int* new_size, int* from, int* to, int* buffer) {
     int SUB_NI = to[0] - from[0];
     int SUB_NJ = to[1] - from[1];
     int SUB_NK = to[2] - from[2];
@@ -41,8 +43,6 @@ void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to) {
     int NK_NEW = new_size[2];
     int NL_NEW = new_size[3];
     int NM_NEW = new_size[4];
-    int* buffer = new int[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
-    MPI_Recv(&(buffer[0]), SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     #pragma omp parallel for collapse(4)
     for (int i = 0; i < SUB_NI; i++)
     {
@@ -58,3 +58,5 @@ void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to) {
         }
     }
 }
+
+#endif

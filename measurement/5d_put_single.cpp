@@ -26,7 +26,6 @@ int main(int argc, char** argv){
     if (size != 2) {
         throw std::runtime_error("When testing only 1 block transmission, only 2 processors are needed");
     }
-
     
     constexpr int NI = 20;
     constexpr int NJ = 30;
@@ -91,10 +90,6 @@ int main(int argc, char** argv){
     NdIndices<N> from_recv = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
     NdIndices<N> to_recv = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
 
-    NdIndices<N> range = to - from;
-    size_t sending_total = get_product<N>(range);
-    T* send_buffer = new T[sending_total];
-
     int from_int[N] = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
     int to_int[N] = {TO_I, TO_J, TO_K, TO_L, TO_M};
     int from_rec_int[N] = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
@@ -123,31 +118,44 @@ int main(int argc, char** argv){
     new_array = new T[new_total];
     send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
+    std::string file_name;
+// only some empirical validation
+
+//    if(rank == 0) {
+//        validate_init<T, N>(current_array, current_size);
+//    }
+//    if(rank == 1)
+//    {
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
 
     // START METHOD 1
-    std::string file_name = std::to_string(N) + std::string("d_transmit_with_API") + std::string(std::getenv("OMP_NUM_THREADS"));
-    LSB_Init(file_name.c_str(), 0);
-    LSB_Set_Rparam_int("rank", rank);
-    set_lsb_chunk_size<N>(chunk_num);
-
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
-            send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
-            MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
-            LSB_Rec(k);
-        }
-    }
-
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
-            recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
-            LSB_Rec(k);
-        }
-    }
-    LSB_Finalize();
-    LSB_chunk_dim_cstr_free_all<N>();
+//    std::string file_name = std::to_string(N) + std::string("d_transmit_with_API") + std::string(std::getenv("OMP_NUM_THREADS"));
+//    LSB_Init(file_name.c_str(), 0);
+//    LSB_Set_Rparam_int("rank", rank);
+//    set_lsb_chunk_size<N>(chunk_num);
+//
+//    if (rank == 0) {
+//        for (int k = 0; k < RUNS; ++k) {
+//            LSB_Res();
+//            send<T, N>(current_array, 1, current_size, from, to, chunk_num);
+//            LSB_Rec(k);
+//        }
+//    }
+//
+//    if(rank == 1){
+//        for (int k = 0; k < RUNS; ++k){
+//            LSB_Res();
+//            recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
+//            LSB_Rec(k);
+//        }
+//    }
+//    LSB_Finalize();
+//    LSB_chunk_dim_cstr_free_all<N>();
     // END METHOD 1
 
     // START METHOD 2
@@ -179,31 +187,42 @@ int main(int argc, char** argv){
         LSB_Rec(k);
     }
     LSB_Finalize();
-
+//    if(rank == 1) {
+//        std::cout << "test 1 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if(new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
     // END METHOD 2
 
     // START METHOD 3
-    file_name = std::to_string(N) + std::string("d_transmit_without_API") + std::string(std::getenv("OMP_NUM_THREADS"));
-    LSB_Init(file_name.c_str(), 0);
-    LSB_Set_Rparam_int("rank", rank);
-
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
-            send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
-            MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-            LSB_Rec(k);
-        }
-    }
-
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
-            recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
-            LSB_Rec(k);
-        }
-    }
-    LSB_Finalize();
+//    file_name = std::to_string(N) + std::string("d_transmit_without_API") + std::string(std::getenv("OMP_NUM_THREADS"));
+//    LSB_Init(file_name.c_str(), 0);
+//    LSB_Set_Rparam_int("rank", rank);
+//
+//    if (rank == 0) {
+//        for (int k = 0; k < RUNS; ++k) {
+//            LSB_Res();
+//            send_5d(current_array, 1, current_size_int, from_int, to_int);
+//            LSB_Rec(k);
+//        }
+//    }
+//
+//    if(rank == 1){
+//        for (int k = 0; k < RUNS; ++k){
+//            LSB_Res();
+//            recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
+//            LSB_Rec(k);
+//        }
+//    }
+//    LSB_Finalize();
     // END METHOD 3
 
     // START METHOD 4 datatype with one-sided put
@@ -226,6 +245,19 @@ int main(int argc, char** argv){
     }
     MPI_Win_free(&window1);
     LSB_Finalize();
+//    if(rank == 1) {
+//        std::cout << "test2 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if(new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
     // END METHOD 4
 
     // START METHOD 5 manual with one-sided put
@@ -254,12 +286,19 @@ int main(int argc, char** argv){
     }
     MPI_Win_free(&window2);
     LSB_Finalize();
+//    if(rank == 1) {
+//        std::cout << "test3 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if (new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//    }
+    // END METHOD 5
 
     MPI_Finalize();
     delete[] current_array; 
     current_array = nullptr;
     delete[] new_array;
     new_array = nullptr;
-    delete[] send_buffer;
-    send_buffer = nullptr;
 }

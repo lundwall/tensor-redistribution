@@ -245,7 +245,7 @@ inline constexpr void n_task_for(NdIndices<N> begin, NdIndices<N> end, Callable&
 }
 
 template <typename T, size_t N>
-void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> from, NdIndices<N> to, NdIndices<N> chunk_num, MPI_Request* request){
+void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> from, NdIndices<N> to, NdIndices<N> chunk_num, MPI_Request* request, T* buffer){
     NdIndices<N> range = to - from;
     check_divisible<N>(range, chunk_num);
 
@@ -260,7 +260,6 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
     size_t row_length = std::get<N - 1>(chunk_size);
     
     MPI_Datatype datatype = to_MPI_type<T>;
-    T* buffer = new T[sending_total];
     bool is_first = true;
 
     // indices in chunk_num
@@ -287,8 +286,6 @@ void send(T* source, int other_rank, NdIndices<N> current_size, NdIndices<N> fro
     };
 
     n_for<N>(zero_NdIndices<N>, chunk_num, chunk_iter);
-
-    delete[] buffer;
 }
 
 template <typename T, size_t N>
