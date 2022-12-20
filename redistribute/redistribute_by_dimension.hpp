@@ -64,7 +64,6 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
 	{
-		printf("Run %d", run_idx);
 		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
 		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
 		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
@@ -85,7 +84,7 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	    	if (MODE == "manual")
 	    	{
 		    	// send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup);
-		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to);
+		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, &state->send_req[idx]);
 	    	}
 	    	else
 	    	{
@@ -105,6 +104,9 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    	}
 	    }
+
+		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
+
 		LSB_Rec(run_idx);
 	}
 
