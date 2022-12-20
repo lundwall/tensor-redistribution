@@ -4,7 +4,6 @@
  */
 
 #include "redistribute.hpp"
-#define MODE "manual"
 #define DEBUG false
 
 int main(int argc, char** argv)
@@ -69,6 +68,7 @@ int main(int argc, char** argv)
     	B[i] = 0;
    	}
 
+	std::string MODE = argv[1];
     redistribute(state, A, state->send_array_dimension, B, state->recv_array_dimension, MODE);
 
     MPI_Finalize();

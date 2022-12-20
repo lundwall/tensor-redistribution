@@ -2,6 +2,7 @@
 #include <send_recv.hpp>
 #include <validation.hpp>
 #include <liblsb.h>
+#include <omp.h>
 #include "utils.hpp"
 #include "send_recv_5d.hpp"
 #define RUN 1
@@ -60,7 +61,10 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
     std::string name = std::to_string(N) + "d_redistribute";
     LSB_Init(name.c_str(), 0);
-	set_lsb_chunk_size<N>(chunk_num_tup);
+	// set_lsb_chunk_size<N>(chunk_num_tup);
+
+	LSB_Set_Rparam_string("Mode", MODE.c_str());
+	LSB_Set_Rparam_int("Threads", omp_get_max_threads());
 
 	size_t allocate_number = std::max(state->send_count, 1);
 	int** send_buffers = new int*[allocate_number];
@@ -123,43 +127,42 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
 
 		LSB_Rec(run_idx);
+
+		for (auto idx = 0; idx < state->send_count; ++idx)
+		{
+			delete[] send_buffers[idx];
+		}
+
+		delete[] send_buffers;
+		send_buffers = nullptr;
+
+		int* copy_source = _inp_buffer;
+		int* copy_dest = _out_buffer;
+		int src_strides[N];
+		int rcv_strides[N];
+		for (auto idx = 0; idx < state->copy_count; ++idx) 
+		{
+			src_strides[N-1] = 1;
+			rcv_strides[N-1] = 1;
+			int src_stride = 1;
+			int rcv_stride = 1;
+			for (auto dim_idx = state->send_dimension-1; dim_idx >= 0; dim_idx--)
+			{
+				copy_source += state->self_src[idx * state->send_dimension + dim_idx] * src_stride;
+				src_strides[dim_idx] = src_stride;
+				src_stride *= A_shape_in[dim_idx];
+			}
+
+			for (auto dim_idx = state->recv_dimension=1; dim_idx >= 0; dim_idx--)
+			{
+				copy_dest += state->self_dst[idx * state->recv_dimension + dim_idx] * rcv_stride;
+				rcv_strides[dim_idx] = rcv_stride;
+				rcv_stride *= B_shape_in[dim_idx];
+			}
+
+			CopyNDDynamicHelper<N, 1>(idx, src_strides, rcv_strides, state->self_size, copy_source, copy_dest, state->self_size[0], src_strides[0], rcv_strides[0]);
+		}
 	}
-
-
-	for (auto idx = 0; idx < state->send_count; ++idx)
-	{
-		delete[] send_buffers[idx];
-	}
-
-	delete[] send_buffers;
-	send_buffers = nullptr;
-
-    int* copy_source = _inp_buffer;
-    int* copy_dest = _out_buffer;
-    int src_strides[N];
-    int rcv_strides[N];
-	for (auto idx = 0; idx < state->copy_count; ++idx) 
-	{
-        src_strides[N-1] = 1;
-        rcv_strides[N-1] = 1;
-        int src_stride = 1;
-        int rcv_stride = 1;
-        for (auto dim_idx = state->send_dimension-1; dim_idx >= 0; dim_idx--)
-        {
-        	copy_source += state->self_src[idx * state->send_dimension + dim_idx] * src_stride;
-        	src_strides[dim_idx] = src_stride;
-        	src_stride *= A_shape_in[dim_idx];
-        }
-
-        for (auto dim_idx = state->recv_dimension=1; dim_idx >= 0; dim_idx--)
-        {
-        	copy_dest += state->self_dst[idx * state->recv_dimension + dim_idx] * rcv_stride;
-        	rcv_strides[dim_idx] = rcv_stride;
-        	rcv_stride *= B_shape_in[dim_idx];
-        }
-
-		CopyNDDynamicHelper<N, 1>(idx, src_strides, rcv_strides, state->self_size, copy_source, copy_dest, state->self_size[0], src_strides[0], rcv_strides[0]);
-    }
     LSB_Finalize();
 	LSB_chunk_dim_cstr_free_all<2>();
 }
