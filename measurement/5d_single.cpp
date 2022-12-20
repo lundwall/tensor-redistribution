@@ -9,6 +9,7 @@
 #include <cassert>
 #include <send_recv.hpp>
 #include <validation.hpp>
+#include <send_recv_5d.hpp>
 
 int main(int argc, char** argv){
     constexpr size_t RUNS = 10;
@@ -89,6 +90,12 @@ int main(int argc, char** argv){
     NdIndices<N> from_recv = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
     NdIndices<N> to_recv = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
 
+    int from_int[N] = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
+    int to_int[N] = {TO_I, TO_J, TO_K, TO_L, TO_M};
+    int from_rec_int[N] = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
+    int to_rec_int[N] = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
+    int current_size_int[N] = {NI, NJ, NK, NL, NM};
+    int new_size_int[N] = {NI_NEW, NJ_NEW, NK_NEW, NL_NEW, NM_NEW};
     
     MPI_Datatype send_type, recv_type;
     int subarray_size[N] = {SUB_NI,SUB_NJ, SUB_NK, SUB_NL, SUB_NM};
@@ -160,7 +167,6 @@ int main(int argc, char** argv){
 
         if (rank == 1)
         {
-
             MPI_Recv(&(new_array[0]), 1, recv_type, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
 
@@ -170,6 +176,28 @@ int main(int argc, char** argv){
 
     // END METHOD 2
 
+    // START METHOD 3
+    file_name = std::to_string(N) + std::string("d_transmit_without_API") + std::string(std::getenv("OMP_NUM_THREADS"));
+    LSB_Init(file_name.c_str(), 0);
+    LSB_Set_Rparam_int("rank", rank);
+
+    if (rank == 0) {
+        for (int k = 0; k < RUNS; ++k) {
+            LSB_Res();
+            send_5d(current_array, 1, current_size_int, from_int, to_int);
+            LSB_Rec(k);
+        }
+    }
+
+    if(rank == 1){
+        for (int k = 0; k < RUNS; ++k){
+            LSB_Res();
+            recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
+            LSB_Rec(k);
+        }
+    }
+    LSB_Finalize();
+    // END METHOD 3
 
     MPI_Finalize();
     delete[] current_array; 
