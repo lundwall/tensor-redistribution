@@ -10,6 +10,7 @@
 #include <send_recv.hpp>
 #include <validation.hpp>
 #include <send_recv_5d.hpp>
+#include "oneside_helper.h"
 
 int main(int argc, char** argv){
     constexpr size_t RUNS = 10;
@@ -200,6 +201,55 @@ int main(int argc, char** argv){
     }
     LSB_Finalize();
     // END METHOD 3
+
+    // START METHOD 4 datatype with one-sided put
+    file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put") + std::string(std::getenv("OMP_NUM_THREADS"));
+    LSB_Init(file_name.c_str(), 0);
+    LSB_Set_Rparam_int("rank", rank);
+
+    MPI_Win window1;
+    MPI_Win_create(new_array, new_total * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window1);
+    MPI_Win_fence(0, window1);
+
+    for (int k = 0; k < RUNS; ++k) {
+        LSB_Res();
+        if (rank == 0)
+        {
+            MPI_Put(current_array, 1, send_type, 1, 0, 1, recv_type, window1);
+        }
+        MPI_Win_fence(0, window1);
+        LSB_Rec(k);
+    }
+    MPI_Win_free(&window1);
+    LSB_Finalize();
+    // END METHOD 4
+
+    // START METHOD 5 manual with one-sided put
+    file_name = std::to_string(N) + std::string("d_transmit_manual_put") + std::string(std::getenv("OMP_NUM_THREADS"));
+    LSB_Init(file_name.c_str(), 0);
+    LSB_Set_Rparam_int("rank", rank);
+
+    int transmit_size = SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM;
+    MPI_Win window2;
+    MPI_Win_create(recv_array,  transmit_size * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window2);
+    MPI_Win_fence(0, window2);
+
+    for (int k = 0; k < RUNS; ++k) {
+        LSB_Res();
+        if (rank == 0)
+        {
+            prepare_send_buffer(current_array, current_size_int, from_int, to_int, send_array);
+            MPI_Put(send_array, transmit_size, MPI_INT, 1, 0, transmit_size, MPI_INT, window2);
+        }
+        MPI_Win_fence(0, window2);
+        if(rank == 1)
+        {
+            unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
+        }
+        LSB_Rec(k);
+    }
+    MPI_Win_free(&window2);
+    LSB_Finalize();
 
     MPI_Finalize();
     delete[] current_array; 

@@ -119,6 +119,20 @@ int main(int argc, char** argv){
     send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     std::string file_name;
+// only some empirical validation
+
+//    if(rank == 0) {
+//        validate_init<T, N>(current_array, current_size);
+//    }
+//    if(rank == 1)
+//    {
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
+
     // START METHOD 1
 //    std::string file_name = std::to_string(N) + std::string("d_transmit_with_API") + std::string(std::getenv("OMP_NUM_THREADS"));
 //    LSB_Init(file_name.c_str(), 0);
@@ -173,7 +187,19 @@ int main(int argc, char** argv){
         LSB_Rec(k);
     }
     LSB_Finalize();
-
+//    if(rank == 1) {
+//        std::cout << "test 1 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if(new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
     // END METHOD 2
 
     // START METHOD 3
@@ -219,6 +245,19 @@ int main(int argc, char** argv){
     }
     MPI_Win_free(&window1);
     LSB_Finalize();
+//    if(rank == 1) {
+//        std::cout << "test2 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if(new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            current_array[i] = 0;
+//            new_array[i] = 0;
+//        }
+//    }
     // END METHOD 4
 
     // START METHOD 5 manual with one-sided put
@@ -232,8 +271,6 @@ int main(int argc, char** argv){
     MPI_Win_fence(0, window2);
 
     for (int k = 0; k < RUNS; ++k) {
-        int count = 0;
-
         LSB_Res();
         if (rank == 0)
         {
@@ -241,11 +278,22 @@ int main(int argc, char** argv){
             MPI_Put(send_array, transmit_size, MPI_INT, 1, 0, transmit_size, MPI_INT, window2);
         }
         MPI_Win_fence(0, window2);
-        unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
+        if(rank == 1)
+        {
+            unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
+        }
         LSB_Rec(k);
     }
     MPI_Win_free(&window2);
     LSB_Finalize();
+//    if(rank == 1) {
+//        std::cout << "test3 !!!!" << std::endl;
+//        for (int i = 0; i < current_total; ++i)
+//        {
+//            if (new_array[i] != 0)
+//                std::cout << new_array[i] << " ";
+//        }
+//    }
     // END METHOD 5
 
     MPI_Finalize();
