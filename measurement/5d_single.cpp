@@ -129,22 +129,20 @@ int main(int argc, char** argv){
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
     set_lsb_chunk_size<N>(chunk_num);
-
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
+    for (int k = 0; k < RUNS; ++k)
+    {
+        LSB_Res();
+        if (rank == 0) 
+        {
             send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
             MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
-            LSB_Rec(k);
         }
-    }
 
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
+        if(rank == 1)
+        {
             recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
-            LSB_Rec(k);
         }
+        LSB_Rec(k);
     }
     LSB_Finalize();
     LSB_chunk_dim_cstr_free_all<N>();
@@ -161,7 +159,6 @@ int main(int argc, char** argv){
     MPI_Type_commit(&recv_type);
 
     for (int k = 0; k < RUNS; ++k) {
-        int count = 0;
 
         LSB_Res();
 
@@ -187,21 +184,20 @@ int main(int argc, char** argv){
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
 
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
+    for (int k = 0; k < RUNS; ++k)
+    {
+        LSB_Res();
+        if (rank == 0) 
+        {
             send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-            LSB_Rec(k);
         }
-    }
 
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
+        if(rank == 1)
+        {
             recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
-            LSB_Rec(k);
         }
+        LSB_Rec(k);
     }
     LSB_Finalize();
     // END METHOD 3
