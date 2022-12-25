@@ -40,11 +40,11 @@ int main(int argc, char** argv){
     constexpr int NL_NEW = 70;
     constexpr int NM_NEW = 70;
 
-    constexpr int SUB_NI = 10;
-    constexpr int SUB_NJ = 10;
-    constexpr int SUB_NK = 10;
-    constexpr int SUB_NL = 10;
-    constexpr int SUB_NM = 10;
+    constexpr int SUB_NI = 30;
+    constexpr int SUB_NJ = 30;
+    constexpr int SUB_NK = 30;
+    constexpr int SUB_NL = 30;
+    constexpr int SUB_NM = 30;
 
     constexpr int FROM_I = 5;
     constexpr int FROM_J = 5;
