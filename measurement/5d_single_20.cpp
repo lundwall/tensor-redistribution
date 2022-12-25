@@ -125,7 +125,7 @@ int main(int argc, char** argv){
     recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
 
     // START METHOD 1
-    std::string file_name = std::to_string(N) + std::string("d_transmit_with_API") + std::string(std::getenv("OMP_NUM_THREADS"));
+    std::string file_name = std::to_string(N) + std::string("d_transmit_with_API") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
     set_lsb_chunk_size<N>(chunk_num);
@@ -149,7 +149,7 @@ int main(int argc, char** argv){
     // END METHOD 1
 
     // START METHOD 2
-    file_name = std::to_string(N) + std::string("d_transmit_custom_datatype") + std::string(std::getenv("OMP_NUM_THREADS"));
+    file_name = std::to_string(N) + std::string("d_transmit_custom_datatype") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);    LSB_Set_Rparam_int("rank", rank);
 
     MPI_Type_create_subarray(N, send_array_size, subarray_size, send_start, MPI_ORDER_C, MPI_INT, &send_type);
@@ -180,7 +180,7 @@ int main(int argc, char** argv){
     // END METHOD 2
 
     // START METHOD 3
-    file_name = std::to_string(N) + std::string("d_transmit_without_API") + std::string(std::getenv("OMP_NUM_THREADS"));
+    file_name = std::to_string(N) + std::string("d_transmit_without_API") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
 
@@ -203,7 +203,7 @@ int main(int argc, char** argv){
     // END METHOD 3
 
     // START METHOD 4 datatype with one-sided put
-    file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put") + std::string(std::getenv("OMP_NUM_THREADS"));
+    file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
 
@@ -225,7 +225,7 @@ int main(int argc, char** argv){
     // END METHOD 4
 
     // START METHOD 5 manual with one-sided put
-    file_name = std::to_string(N) + std::string("d_transmit_manual_put") + std::string(std::getenv("OMP_NUM_THREADS"));
+    file_name = std::to_string(N) + std::string("d_transmit_manual_put") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
 
