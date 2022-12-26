@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 
 export OMP_NUM_THREADS=1
-sbatch --output=out_mt_5d_1t.txt --mem-per-cpu=2G --ntasks=2 --ntasks-per-node=1 --wrap="unset LSB_AFFINITY_HOSTFILE; mpirun -n 2 --map-by node:PE=1 ../../build/measurement/5d_single_20"
+sbatch --output=out_mt_5d_1t.txt --mem-per-cpu=2G --ntasks=2 --ntasks-per-node=1 --wrap="unset LSB_AFFINITY_HOSTFILE; mpirun -n 2 --map-by node:PE=1 ../../build/measurement/5d_single_30"
 
 sleep 1
 while squeue | grep -m 1 "wrap"; do sleep 1 ; done
 
 #: << 'COMMENT'
 export OMP_NUM_THREADS=2
-sbatch --output=out_mt_5d_2t.txt --mem-per-cpu=2G --ntasks=4 --ntasks-per-node=2 --wrap="unset LSB_AFFINITY_HOSTFILE; mpirun -n 2 --map-by node:PE=2 ../../build/measurement/5d_single_20"
+sbatch --output=out_mt_5d_2t.txt --mem-per-cpu=2G --ntasks=4 --ntasks-per-node=2 --wrap="unset LSB_AFFINITY_HOSTFILE; mpirun -n 2 --map-by node:PE=2 ../../build/measurement/5d_single_30"
 sleep 1
 while squeue | grep -m 1 "wrap"; do sleep 1 ; done
 
