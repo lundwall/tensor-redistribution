@@ -124,6 +124,8 @@ int main(int argc, char** argv){
     send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // START METHOD 1
     std::string file_name = std::to_string(N) + std::string("d_transmit_with_API_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
@@ -147,6 +149,8 @@ int main(int argc, char** argv){
     LSB_Finalize();
     LSB_chunk_dim_cstr_free_all<N>();
     // END METHOD 1
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 2
     file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -179,6 +183,8 @@ int main(int argc, char** argv){
 
     // END METHOD 2
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // START METHOD 3
     file_name = std::to_string(N) + std::string("d_transmit_without_API_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
@@ -202,6 +208,8 @@ int main(int argc, char** argv){
     LSB_Finalize();
     // END METHOD 3
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // START METHOD 4 datatype with one-sided put
     file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
     LSB_Init(file_name.c_str(), 0);
@@ -223,6 +231,8 @@ int main(int argc, char** argv){
     MPI_Win_free(&window1);
     LSB_Finalize();
     // END METHOD 4
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 5 manual with one-sided put
     file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
