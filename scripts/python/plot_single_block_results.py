@@ -4,9 +4,10 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-if len(sys.argv) != 2:
-	print("exactly one input folder should be specified.")
+if len(sys.argv) != 3:
+	print("exactly one input folder and the sub block size should be specified.")
 
+sub_block = sys.argv[2]
 times = [[], [], [], [], [], [], [], []]
 cases = ['5d']
 node_types = ['r0']
@@ -17,7 +18,7 @@ for rank in node_types:
 	for dim in cases:
 		for num_thread in range(1, 9):
 			for experiment in experiments:
-				filename = 'lsb.' + dim + '_transmit_' + experiment +str(num_thread)+'.' + rank
+				filename = 'lsb.' + dim + '_transmit_' + experiment + '_t' + str(num_thread)+ '_' + sub_block + '.' + rank
 				input_file = open(sys.argv[1]+'/' + filename, 'r')
 				lines = input_file.readlines()
 				parameter_list = []
@@ -61,12 +62,12 @@ fig, ax = plt.subplots(3, 3)
 fig.set_size_inches(8, 8)
 fig.subplots_adjust(hspace=0.5, wspace=0.5, left=0.1, right=0.9)
 for num_thread, ax_i in zip(range(1, 9), ax.reshape(-1)):
-	filename = 'lsb.5d_transmit_without_API' + str(num_thread) +'.r0'
+	filename = 'lsb.5d_transmit_without_API_t' + str(num_thread) + '_' + sub_block+'.r0'
 	sns.distplot(dict[num_thread-1][filename], bins=30, ax=ax_i).set(title=filename)
-	filename = 'lsb.5d_transmit_custom_datatype1.r0'
+	filename = 'lsb.5d_transmit_custom_datatype_t1_' + sub_block + '.r0'
 	sns.distplot(dict[0][filename], bins=30, ax=ax_i)
 
-filename = 'lsb.5d_transmit_custom_datatype1.r0'
+filename = 'lsb.5d_transmit_custom_datatype_t1_' + sub_block + '.r0'
 sns.distplot(dict[0][filename],bins=30, ax=ax[2,2]).set(title='custom_datatype')
 plt.savefig('manual_vs_datatype.pdf')
 

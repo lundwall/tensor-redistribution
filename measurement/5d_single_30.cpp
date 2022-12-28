@@ -124,7 +124,7 @@ int main(int argc, char** argv){
     send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
     recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 1
     std::string file_name = std::to_string(N) + std::string("d_transmit_with_API_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -133,6 +133,7 @@ int main(int argc, char** argv){
     set_lsb_chunk_size<N>(chunk_num);
     for (int k = 0; k < RUNS; ++k)
     {
+        MPI_Barrier(MPI_COMM_WORLD);
         LSB_Res();
         if (rank == 0) 
         {
@@ -150,7 +151,7 @@ int main(int argc, char** argv){
     LSB_chunk_dim_cstr_free_all<N>();
     // END METHOD 1
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 2
     file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -163,7 +164,7 @@ int main(int argc, char** argv){
     MPI_Type_commit(&recv_type);
 
     for (int k = 0; k < RUNS; ++k) {
-
+        MPI_Barrier(MPI_COMM_WORLD);
         LSB_Res();
 
         if (rank == 0)
@@ -183,7 +184,7 @@ int main(int argc, char** argv){
 
     // END METHOD 2
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 3
     file_name = std::to_string(N) + std::string("d_transmit_without_API_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -192,6 +193,7 @@ int main(int argc, char** argv){
 
     for (int k = 0; k < RUNS; ++k)
     {
+        MPI_Barrier(MPI_COMM_WORLD);
         LSB_Res();
         if (rank == 0) 
         {
@@ -208,7 +210,7 @@ int main(int argc, char** argv){
     LSB_Finalize();
     // END METHOD 3
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 4 datatype with one-sided put
     file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -219,7 +221,9 @@ int main(int argc, char** argv){
     MPI_Win_create(new_array, new_total * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window1);
     MPI_Win_fence(0, window1);
 
-    for (int k = 0; k < RUNS; ++k) {
+    for (int k = 0; k < RUNS; ++k) 
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
         LSB_Res();
         if (rank == 0)
         {
@@ -232,7 +236,7 @@ int main(int argc, char** argv){
     LSB_Finalize();
     // END METHOD 4
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     // START METHOD 5 manual with one-sided put
     file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::string(std::getenv("OMP_NUM_THREADS")) + std::string("_") + std::to_string(SUB_NI);
@@ -245,6 +249,7 @@ int main(int argc, char** argv){
     MPI_Win_fence(0, window2);
 
     for (int k = 0; k < RUNS; ++k) {
+        MPI_Barrier(MPI_COMM_WORLD);
         LSB_Res();
         if (rank == 0)
         {
