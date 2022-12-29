@@ -49,13 +49,13 @@ for rank in node_types:
 
 sns.set(font_scale=0.6)
 
-# for i in range(8):
-# 	fig, ax = plt.subplots(5, 1)
-# 	fig.set_size_inches(6, 8)
-# 	fig.subplots_adjust(hspace=0.5)
-# 	for key, ax_i in zip(dict[i].keys(), ax.reshape(-1)):
-# 		sns.distplot(dict[i][key], norm_hist=True, bins=30, ax=ax_i).set(title=key)
-# 	plt.savefig('different_method_same_threadnum_' + str(i+1) + '.pdf')
+for i in range(8):
+	fig, ax = plt.subplots(5, 1)
+	fig.set_size_inches(6, 8)
+	fig.subplots_adjust(hspace=0.5)
+	for key, ax_i in zip(dict[i].keys(), ax.reshape(-1)):
+		sns.distplot(dict[i][key], norm_hist=True, bins=30, ax=ax_i).set(title=key)
+	plt.savefig('different_method_same_threadnum_' + str(i+1) + '.pdf')
 
 
 fig, ax = plt.subplots(3, 3)

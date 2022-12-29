@@ -27,105 +27,106 @@ int main(int argc, char** argv){
         throw std::runtime_error("When testing only 1 block transmission, only 2 processors are needed");
     }
 
+    constexpr int NI = 70;
+    constexpr int NJ = 70;
+    constexpr int NK = 70;
+    constexpr int NL = 70;
+    constexpr int NM = 70;
+
+    constexpr int NI_NEW = 70;
+    constexpr int NJ_NEW = 70;
+    constexpr int NK_NEW = 70;
+    constexpr int NL_NEW = 70;
+    constexpr int NM_NEW = 70;
+
+    constexpr int SUB_NI = 20;
+    constexpr int SUB_NJ = 20;
+    constexpr int SUB_NK = 20;
+    constexpr int SUB_NL = 20;
+    constexpr int SUB_NM = 20;
+
+    constexpr int FROM_I = 5;
+    constexpr int FROM_J = 5;
+    constexpr int FROM_K = 5;
+    constexpr int FROM_L = 5;
+    constexpr int FROM_M = 5;
+
+    constexpr int FROM_I_NEW = 5;
+    constexpr int FROM_J_NEW = 5;
+    constexpr int FROM_K_NEW = 5;
+    constexpr int FROM_L_NEW = 5;
+    constexpr int FROM_M_NEW = 5;
+
+    constexpr int TO_I = FROM_I + SUB_NI;
+    constexpr int TO_J = FROM_J + SUB_NJ;
+    constexpr int TO_K = FROM_K + SUB_NK;
+    constexpr int TO_L = FROM_L + SUB_NL;
+    constexpr int TO_M = FROM_M + SUB_NM;
+
+    constexpr int TO_I_NEW = FROM_I_NEW + SUB_NI;
+    constexpr int TO_J_NEW = FROM_J_NEW + SUB_NJ;
+    constexpr int TO_K_NEW = FROM_K_NEW + SUB_NK;
+    constexpr int TO_L_NEW = FROM_L_NEW + SUB_NL;
+    constexpr int TO_M_NEW = FROM_M_NEW + SUB_NM;
+
+    constexpr int CHUNK_I = 1;
+    constexpr int CHUNK_J = 1;
+    constexpr int CHUNK_K = 1;
+    constexpr int CHUNK_L = 1;
+    constexpr int CHUNK_M = 1;
+    constexpr int NUM_CHUNKS = 1;
+    constexpr int CHUNK_SIZE = SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM; // send all at once (same as no chunk)
+
+    T* current_array;
+    T* new_array;
+    T* send_array;
+    T* recv_array;
+
+    NdIndices<N> chunk_num = {CHUNK_I, CHUNK_J, CHUNK_J, CHUNK_L, CHUNK_M};
+    NdIndices<N> current_size = {NI, NJ, NK, NL, NM};
+    NdIndices<N> new_size = {NI_NEW, NJ_NEW, NK_NEW, NL_NEW, NM_NEW};
+    NdIndices<N> from = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
+    NdIndices<N> to = {TO_I, TO_J, TO_K, TO_L, TO_M};
+    NdIndices<N> from_recv = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
+    NdIndices<N> to_recv = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
+
+    NdIndices<N> range = to - from;
+    size_t sending_total = get_product<N>(range);
+    T* send_buffer = new T[sending_total];
+
+    int from_int[N] = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
+    int to_int[N] = {TO_I, TO_J, TO_K, TO_L, TO_M};
+    int from_rec_int[N] = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
+    int to_rec_int[N] = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
+    int current_size_int[N] = {NI, NJ, NK, NL, NM};
+    int new_size_int[N] = {NI_NEW, NJ_NEW, NK_NEW, NL_NEW, NM_NEW};
+    
+    MPI_Datatype send_type, recv_type;
+    int subarray_size[N] = {SUB_NI,SUB_NJ, SUB_NK, SUB_NL, SUB_NM};
+    int send_array_size[N] = {NI,NJ,NK,NL,NM};
+    int send_start[N] = {FROM_I,FROM_J,FROM_K,FROM_L,FROM_M};
+    int recv_array_size[N] = {NI_NEW,NJ_NEW,NK_NEW,NL_NEW,NM_NEW};
+    int recv_start[N] = {FROM_I_NEW,FROM_J_NEW,FROM_K_NEW,FROM_L_NEW,FROM_M_NEW};
+    MPI_Request* sendreq = new MPI_Request[1];
+    MPI_Request* recvreq = new MPI_Request[1];
+
+    char processor_name[256];
+    int len_processor_name = 0;
+    MPI_Get_processor_name(processor_name, &len_processor_name);
+    std::cout << processor_name << std::endl;
+
+    size_t current_total = get_product<N>(current_size);
+    size_t new_total = get_product<N>(new_size);
+
+    current_array = new T[current_total];
+    new_array = new T[new_total];
+    send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
+    recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
+
     int thread_num;
     for (thread_num = 1; thread_num <= 8; thread_num++)
     {    
         omp_set_num_threads(thread_num);
-        constexpr int NI = 70;
-        constexpr int NJ = 70;
-        constexpr int NK = 70;
-        constexpr int NL = 70;
-        constexpr int NM = 70;
-
-        constexpr int NI_NEW = 70;
-        constexpr int NJ_NEW = 70;
-        constexpr int NK_NEW = 70;
-        constexpr int NL_NEW = 70;
-        constexpr int NM_NEW = 70;
-
-        constexpr int SUB_NI = 20;
-        constexpr int SUB_NJ = 20;
-        constexpr int SUB_NK = 20;
-        constexpr int SUB_NL = 20;
-        constexpr int SUB_NM = 20;
-
-        constexpr int FROM_I = 5;
-        constexpr int FROM_J = 5;
-        constexpr int FROM_K = 5;
-        constexpr int FROM_L = 5;
-        constexpr int FROM_M = 5;
-
-        constexpr int FROM_I_NEW = 5;
-        constexpr int FROM_J_NEW = 5;
-        constexpr int FROM_K_NEW = 5;
-        constexpr int FROM_L_NEW = 5;
-        constexpr int FROM_M_NEW = 5;
-
-        constexpr int TO_I = FROM_I + SUB_NI;
-        constexpr int TO_J = FROM_J + SUB_NJ;
-        constexpr int TO_K = FROM_K + SUB_NK;
-        constexpr int TO_L = FROM_L + SUB_NL;
-        constexpr int TO_M = FROM_M + SUB_NM;
-
-        constexpr int TO_I_NEW = FROM_I_NEW + SUB_NI;
-        constexpr int TO_J_NEW = FROM_J_NEW + SUB_NJ;
-        constexpr int TO_K_NEW = FROM_K_NEW + SUB_NK;
-        constexpr int TO_L_NEW = FROM_L_NEW + SUB_NL;
-        constexpr int TO_M_NEW = FROM_M_NEW + SUB_NM;
-
-        constexpr int CHUNK_I = 1;
-        constexpr int CHUNK_J = 1;
-        constexpr int CHUNK_K = 1;
-        constexpr int CHUNK_L = 1;
-        constexpr int CHUNK_M = 1;
-        constexpr int NUM_CHUNKS = 1;
-        constexpr int CHUNK_SIZE = SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM; // send all at once (same as no chunk)
-
-        T* current_array;
-        T* new_array;
-        T* send_array;
-        T* recv_array;
-
-        NdIndices<N> chunk_num = {CHUNK_I, CHUNK_J, CHUNK_J, CHUNK_L, CHUNK_M};
-        NdIndices<N> current_size = {NI, NJ, NK, NL, NM};
-        NdIndices<N> new_size = {NI_NEW, NJ_NEW, NK_NEW, NL_NEW, NM_NEW};
-        NdIndices<N> from = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
-        NdIndices<N> to = {TO_I, TO_J, TO_K, TO_L, TO_M};
-        NdIndices<N> from_recv = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
-        NdIndices<N> to_recv = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
-
-        NdIndices<N> range = to - from;
-        size_t sending_total = get_product<N>(range);
-        T* send_buffer = new T[sending_total];
-
-        int from_int[N] = {FROM_I, FROM_J, FROM_K, FROM_L, FROM_M};
-        int to_int[N] = {TO_I, TO_J, TO_K, TO_L, TO_M};
-        int from_rec_int[N] = {FROM_I_NEW, FROM_J_NEW, FROM_K_NEW, FROM_L_NEW, FROM_M_NEW};
-        int to_rec_int[N] = {TO_I_NEW, TO_J_NEW, TO_K_NEW, TO_L_NEW, TO_M_NEW};
-        int current_size_int[N] = {NI, NJ, NK, NL, NM};
-        int new_size_int[N] = {NI_NEW, NJ_NEW, NK_NEW, NL_NEW, NM_NEW};
-        
-        MPI_Datatype send_type, recv_type;
-        int subarray_size[N] = {SUB_NI,SUB_NJ, SUB_NK, SUB_NL, SUB_NM};
-        int send_array_size[N] = {NI,NJ,NK,NL,NM};
-        int send_start[N] = {FROM_I,FROM_J,FROM_K,FROM_L,FROM_M};
-        int recv_array_size[N] = {NI_NEW,NJ_NEW,NK_NEW,NL_NEW,NM_NEW};
-        int recv_start[N] = {FROM_I_NEW,FROM_J_NEW,FROM_K_NEW,FROM_L_NEW,FROM_M_NEW};
-        MPI_Request* sendreq = new MPI_Request[1];
-        MPI_Request* recvreq = new MPI_Request[1];
-
-        char processor_name[256];
-        int len_processor_name = 0;
-        MPI_Get_processor_name(processor_name, &len_processor_name);
-        std::cout << processor_name << std::endl;
-
-        size_t current_total = get_product<N>(current_size);
-        size_t new_total = get_product<N>(new_size);
-
-        current_array = new T[current_total];
-        new_array = new T[new_total];
-        send_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
-        recv_array = new T[SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM];
 
         // MPI_Barrier(MPI_COMM_WORLD);
 
@@ -269,14 +270,12 @@ int main(int argc, char** argv){
         }
         MPI_Win_free(&window2);
         LSB_Finalize();
-
-        
-        delete[] current_array; 
-        current_array = nullptr;
-        delete[] new_array;
-        new_array = nullptr;
-        delete[] send_buffer;
-        send_buffer = nullptr;
     }
+    delete[] current_array; 
+    current_array = nullptr;
+    delete[] new_array;
+    new_array = nullptr;
+    delete[] send_buffer;
+    send_buffer = nullptr;
     MPI_Finalize();
 }
