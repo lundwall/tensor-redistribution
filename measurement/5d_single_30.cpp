@@ -268,14 +268,12 @@ int main(int argc, char** argv){
         }
         MPI_Win_free(&window2);
         LSB_Finalize();
-
-        
-        delete[] current_array; 
-        current_array = nullptr;
-        delete[] new_array;
-        new_array = nullptr;
-        delete[] send_buffer;
-        send_buffer = nullptr;
     }
+    delete[] current_array; 
+    current_array = nullptr;
+    delete[] new_array;
+    new_array = nullptr;
+    delete[] send_buffer;
+    send_buffer = nullptr;
     MPI_Finalize();
 }
