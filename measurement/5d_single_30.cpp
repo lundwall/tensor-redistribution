@@ -269,7 +269,7 @@ int main(int argc, char** argv){
         MPI_Win_free(&window2);
         LSB_Finalize();
 
-        MPI_Finalize();
+        
         delete[] current_array; 
         current_array = nullptr;
         delete[] new_array;
@@ -277,4 +277,5 @@ int main(int argc, char** argv){
         delete[] send_buffer;
         send_buffer = nullptr;
     }
+    MPI_Finalize();
 }
