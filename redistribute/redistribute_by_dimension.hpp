@@ -3,9 +3,12 @@
 #include <validation.hpp>
 #include <liblsb.h>
 #include <omp.h>
+#include <math.h>
 #include "utils.hpp"
 #include "send_recv_5d.hpp"
-#define RUN 1
+#define RUN 1000
+#define WARMUP 10
+#define SYNC 10
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -61,36 +64,69 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
     std::string name = std::to_string(N) + "d_redistribute";
     LSB_Init(name.c_str(), 0);
-	// set_lsb_chunk_size<N>(chunk_num_tup);
 
-	LSB_Set_Rparam_string("Mode", MODE.c_str());
-	LSB_Set_Rparam_int("Threads", omp_get_max_threads());
+    int rank, size;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	size_t allocate_number = std::max(state->send_count, 1);
-	int** send_buffers = new int*[allocate_number];
+	LSB_Set_Rparam_int("rank", rank);
+	LSB_Set_Rparam_string("mode", MODE.c_str());
+	LSB_Set_Rparam_string("type", "sync");
+	LSB_Set_Rparam_int("threads", omp_get_max_threads());
+	LSB_Set_Rparam_double("err", 0); // meaningless here
+	double err;
+	double win;
 
-	NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
-	NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
-	NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
-	NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
+    double* recorded_values = new double[1000];
 
-	for (auto idx = 0; idx < state->send_count; ++idx)
+	LSB_Rec_disable();
+
+	bool all_finished = false;
+
+	for (auto run_idx = 0; run_idx < WARMUP + SYNC + RUN && !all_finished; ++run_idx)
 	{
-		from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-		to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
-		NdIndices<N> range = to_tup_send[idx] - from_tup_send[idx];
-		int sending_total = get_product<N>(range);
-		send_buffers[idx] = new int[sending_total];
-		fflush(stdout);
-	}
-	for (auto idx = 0; idx < state->recv_count; ++idx) 
-	{
-		from_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].from);
-		to_tup_recv[idx] = array_to_tuple<N>(state->recv_block_descriptions[idx].to);
-	}
+		if (run_idx == WARMUP)
+		{
+			LSB_Rec_enable();
+		}
+		else if (run_idx == WARMUP + SYNC)
+		{
+			LSB_Fold(0, LSB_MAX, &win);
+			win *= 4;
+			LSB_Sync_init(MPI_COMM_WORLD, win);
+			LSB_Set_Rparam_string("type", "running");
+		}
+		
+		size_t allocate_number = std::max(state->send_count, 1);
+		int** send_buffers = new int*[allocate_number];
 
-	for (auto run_idx = 0; run_idx < RUN; ++run_idx)
-	{
+		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
+		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
+		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
+		NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
+
+		for (auto idx = 0; idx < state->send_count; ++idx)
+		{
+			from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+			to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+			NdIndices<N> range = to_tup_send[idx] - from_tup_send[idx];
+			int sending_total = get_product<N>(range);
+			send_buffers[idx] = new int[sending_total];
+		}
+		if (run_idx < WARMUP + SYNC)
+		{
+			MPI_Barrier(MPI_COMM_WORLD);
+		}
+		else
+		{
+			err=LSB_Sync();
+			LSB_Set_Rparam_double("err", err);
+			if (err > 0.0)
+			{
+				win += err;
+				LSB_Sync_reset(win);
+			}
+		}
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
@@ -126,7 +162,13 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
 
-		LSB_Rec(run_idx);
+		LSB_Rec(run_idx < WARMUP + SYNC ? 0 : run_idx);
+
+		int num_recorded_values = run_idx - WARMUP - SYNC + 1;
+		if (num_recorded_values >= 1)
+		{
+			aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+		}
 
 		for (auto idx = 0; idx < state->send_count; ++idx)
 		{
@@ -164,7 +206,6 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 		}
 	}
     LSB_Finalize();
-	LSB_chunk_dim_cstr_free_all<2>();
 }
 
 void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE)

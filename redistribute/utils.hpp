@@ -1,4 +1,6 @@
 #include <mpi.h>
+#include <liblsb.h>
+#include <math.h>
 
 struct block_description
 {
@@ -231,5 +233,40 @@ void print_debug_message(redistribution_info* state, int myrank)
             message += " " + std::to_string(state->send_block_descriptions[i].to[j]);
         }
         std::cout << message << std::endl;
+    }
+}
+
+void aggregate_CIs(int run_idx, int num_recorded_values, double* recorded_values, int size, bool* all_finished)
+{
+    double current_time;
+    LSB_Fold(run_idx, LSB_MAX, &current_time);
+    int i = num_recorded_values - 2;
+    while (i >= 0 && recorded_values[i] > current_time)
+    {
+        recorded_values[i + 1] = recorded_values[i];
+        --i;
+    }
+    recorded_values[i + 1] = current_time;
+    if (num_recorded_values > 5) {
+        int lower_ci_index = (int) floor(((double)num_recorded_values - 1.96*sqrt((double)num_recorded_values))/2.0);
+        int upper_ci_index = (int) ceil(1 + ((double)num_recorded_values + 1.96*sqrt((double)num_recorded_values))/2.0);
+        double lower_ci = recorded_values[lower_ci_index];
+        double upper_ci = recorded_values[upper_ci_index];
+        double median;
+        if (num_recorded_values % 2 != 0) {
+            median = recorded_values[num_recorded_values/2];
+        }
+        else
+        {
+            median = (recorded_values[(num_recorded_values-1)/2] + recorded_values[num_recorded_values/2])/2.0;
+        }
+        double diff = ((median - lower_ci) / median) * 100;
+        int buffer[size];
+        int finished = diff < 5.0;
+        MPI_Allgather(&finished, 1, MPI_INT, buffer, 1, MPI_INT, MPI_COMM_WORLD);
+        *all_finished = true;
+        for (int i = 0; i < size; ++i) {
+            *all_finished &= buffer[i];
+        }
     }
 }
