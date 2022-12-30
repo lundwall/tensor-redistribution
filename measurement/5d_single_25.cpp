@@ -11,8 +11,8 @@
 #include <validation.hpp>
 #include <send_recv_5d.hpp>
 #include "oneside_helper.h"
-#include <utils.hpp>
 #include <algorithm>
+#include "utils.hpp"
 
 int main(int argc, char** argv){
     constexpr size_t RUNS = 1000;
@@ -159,11 +159,11 @@ int main(int argc, char** argv){
             {
                 recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
             }
-            int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-            LSB_Rec(max(num_recorded_values, 0));
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
             if (num_recorded_values >= 1)
             {
-                aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
         LSB_Finalize();
@@ -200,11 +200,11 @@ int main(int argc, char** argv){
                 MPI_Recv(&(new_array[0]), 1, recv_type, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
 
-            int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-            LSB_Rec(max(num_recorded_values, 0));
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
             if (num_recorded_values >= 1)
             {
-                aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
         LSB_Finalize();
@@ -235,11 +235,11 @@ int main(int argc, char** argv){
             {
                 recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
             }
-            int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-            LSB_Rec(max(num_recorded_values, 0));
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
             if (num_recorded_values >= 1)
             {
-                aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
         LSB_Finalize();
@@ -268,11 +268,11 @@ int main(int argc, char** argv){
                 MPI_Put(current_array, 1, send_type, 1, 0, 1, recv_type, window1);
             }
             MPI_Win_fence(0, window1);
-            int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-            LSB_Rec(max(num_recorded_values, 0));
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
             if (num_recorded_values >= 1)
             {
-                aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
         MPI_Win_free(&window1);
@@ -308,11 +308,11 @@ int main(int argc, char** argv){
             {
                 unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
             }
-            int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-            LSB_Rec(max(num_recorded_values, 0));
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
             if (num_recorded_values >= 1)
             {
-                aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
         MPI_Win_free(&window2);

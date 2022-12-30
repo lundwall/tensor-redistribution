@@ -102,7 +102,7 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 			int sending_total = get_product<N>(range);
 			send_buffers[idx] = new int[sending_total];
 		}
-		configure_LSB_and_sync(k, WARMUP, SYNC, &win);
+		configure_LSB_and_sync(run_idx, WARMUP, SYNC, &win);
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
@@ -139,10 +139,10 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
 
 		int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-		LSB_Rec(max(num_recorded_values, 0));
+		LSB_Rec(std::max(num_recorded_values, 0));
 		if (num_recorded_values >= 1)
 		{
-			aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
+			aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
 		}
 
 		for (auto idx = 0; idx < state->send_count; ++idx)

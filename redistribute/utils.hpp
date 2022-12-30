@@ -1,6 +1,9 @@
 #include <mpi.h>
 #include <liblsb.h>
 #include <math.h>
+#include <vector>
+#include <fstream>
+#include "dace_helper.h"
 
 struct block_description
 {
@@ -236,10 +239,10 @@ void print_debug_message(redistribution_info* state, int myrank)
     }
 }
 
-void aggregate_CIs(int run_idx, int num_recorded_values, double* recorded_values, int size, bool* all_finished)
+void aggregate_CIs(int num_recorded_values, double* recorded_values, int size, bool* all_finished)
 {
     double current_time;
-    LSB_Fold(run_idx, LSB_MAX, &current_time);
+    LSB_Fold(num_recorded_values, LSB_MAX, &current_time);
     int i = num_recorded_values - 2;
     while (i >= 0 && recorded_values[i] > current_time)
     {
