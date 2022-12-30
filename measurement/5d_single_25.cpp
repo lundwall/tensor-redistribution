@@ -135,7 +135,6 @@ int main(int argc, char** argv){
     for (thread_num = 1; thread_num <= 8; thread_num++)
     {    
         omp_set_num_threads(thread_num);
-        // MPI_Barrier(MPI_COMM_WORLD);
 
         // START METHOD 1
         std::string file_name = std::to_string(N) + std::string("d_transmit_with_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
@@ -169,8 +168,6 @@ int main(int argc, char** argv){
         }
         LSB_Finalize();
         // END METHOD 1
-
-        // MPI_Barrier(MPI_COMM_WORLD);
 
         // START METHOD 2
         file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
@@ -214,8 +211,6 @@ int main(int argc, char** argv){
 
         // END METHOD 2
 
-        // MPI_Barrier(MPI_COMM_WORLD);
-
         // START METHOD 3
         file_name = std::to_string(N) + std::string("d_transmit_without_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
@@ -250,8 +245,6 @@ int main(int argc, char** argv){
         LSB_Finalize();
         // END METHOD 3
 
-        // MPI_Barrier(MPI_COMM_WORLD);
-
         // START METHOD 4 datatype with one-sided put
         file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
@@ -285,8 +278,6 @@ int main(int argc, char** argv){
         MPI_Win_free(&window1);
         LSB_Finalize();
         // END METHOD 4
-
-        // MPI_Barrier(MPI_COMM_WORLD);
 
         // START METHOD 5 manual with one-sided put
         file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
