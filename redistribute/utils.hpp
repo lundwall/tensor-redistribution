@@ -270,3 +270,33 @@ void aggregate_CIs(int run_idx, int num_recorded_values, double* recorded_values
         }
     }
 }
+
+void configure_LSB_and_sync(int run_idx, int num_warmup, int num_sync, double* win)
+{
+    if (run_idx == num_warmup)
+    {
+        LSB_Rec_enable();
+    }
+    else if (run_idx == num_warmup + num_sync)
+    {
+        LSB_Fold(0, LSB_MAX, win);
+        *win *= 4;
+        LSB_Sync_init(MPI_COMM_WORLD, *win);
+        LSB_Set_Rparam_string("type", "running");
+    }
+
+    if (run_idx < num_warmup + num_sync)
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else
+    {
+        double err = LSB_Sync();
+        LSB_Set_Rparam_double("err", err);
+        if (err > 0.0)
+        {
+            *win += err;
+            LSB_Sync_reset(*win);
+        }
+    }
+}

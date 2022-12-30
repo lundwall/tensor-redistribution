@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <send_recv.hpp>
 #include <validation.hpp>
 #include <liblsb.h>
@@ -74,7 +75,6 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	LSB_Set_Rparam_string("type", "sync");
 	LSB_Set_Rparam_int("threads", omp_get_max_threads());
 	LSB_Set_Rparam_double("err", 0); // meaningless here
-	double err;
 	double win;
 
     double* recorded_values = new double[1000];
@@ -85,17 +85,6 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 	for (auto run_idx = 0; run_idx < WARMUP + SYNC + RUN && !all_finished; ++run_idx)
 	{
-		if (run_idx == WARMUP)
-		{
-			LSB_Rec_enable();
-		}
-		else if (run_idx == WARMUP + SYNC)
-		{
-			LSB_Fold(0, LSB_MAX, &win);
-			win *= 4;
-			LSB_Sync_init(MPI_COMM_WORLD, win);
-			LSB_Set_Rparam_string("type", "running");
-		}
 		
 		size_t allocate_number = std::max(state->send_count, 1);
 		int** send_buffers = new int*[allocate_number];
@@ -113,20 +102,7 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 			int sending_total = get_product<N>(range);
 			send_buffers[idx] = new int[sending_total];
 		}
-		if (run_idx < WARMUP + SYNC)
-		{
-			MPI_Barrier(MPI_COMM_WORLD);
-		}
-		else
-		{
-			err=LSB_Sync();
-			LSB_Set_Rparam_double("err", err);
-			if (err > 0.0)
-			{
-				win += err;
-				LSB_Sync_reset(win);
-			}
-		}
+		configure_LSB_and_sync(k, WARMUP, SYNC, &win);
 		LSB_Res();
 	    for (auto idx = 0; idx < state->send_count; ++idx)
 	    {
@@ -162,9 +138,8 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 
 		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
 
-		LSB_Rec(run_idx < WARMUP + SYNC ? 0 : run_idx);
-
 		int num_recorded_values = run_idx - WARMUP - SYNC + 1;
+		LSB_Rec(max(num_recorded_values, 0));
 		if (num_recorded_values >= 1)
 		{
 			aggregate_CIs(run_idx, num_recorded_values, recorded_values, size, &all_finished);
