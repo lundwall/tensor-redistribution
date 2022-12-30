@@ -13,7 +13,7 @@
 #include "oneside_helper.h"
 
 int main(int argc, char** argv){
-    constexpr size_t RUNS = 10;
+    constexpr size_t RUNS = 100;
     constexpr size_t N = 5;
     using T = int;
     int size, rank, received_threads;
@@ -28,35 +28,35 @@ int main(int argc, char** argv){
     }
 
     
-    constexpr int NI = 20;
-    constexpr int NJ = 30;
-    constexpr int NK = 40;
-    constexpr int NL = 40;
-    constexpr int NM = 50;
+    constexpr int NI = 70;
+    constexpr int NJ = 70;
+    constexpr int NK = 70;
+    constexpr int NL = 70;
+    constexpr int NM = 70;
 
-    constexpr int NI_NEW = 30;
-    constexpr int NJ_NEW = 20;
-    constexpr int NK_NEW = 40;
-    constexpr int NL_NEW = 40;
-    constexpr int NM_NEW = 50;
+    constexpr int NI_NEW = 70;
+    constexpr int NJ_NEW = 70;
+    constexpr int NK_NEW = 70;
+    constexpr int NL_NEW = 70;
+    constexpr int NM_NEW = 70;
 
-    constexpr int SUB_NI = 3;
-    constexpr int SUB_NJ = 6;
-    constexpr int SUB_NK = 3;
-    constexpr int SUB_NL = 3;
-    constexpr int SUB_NM = 3;
+    constexpr int SUB_NI = 10;
+    constexpr int SUB_NJ = 10;
+    constexpr int SUB_NK = 10;
+    constexpr int SUB_NL = 10;
+    constexpr int SUB_NM = 10;
 
     constexpr int FROM_I = 5;
-    constexpr int FROM_J = 10;
-    constexpr int FROM_K = 10;
-    constexpr int FROM_L = 10;
-    constexpr int FROM_M = 10;
+    constexpr int FROM_J = 5;
+    constexpr int FROM_K = 5;
+    constexpr int FROM_L = 5;
+    constexpr int FROM_M = 5;
 
     constexpr int FROM_I_NEW = 5;
-    constexpr int FROM_J_NEW = 10;
-    constexpr int FROM_K_NEW = 10;
-    constexpr int FROM_L_NEW = 10;
-    constexpr int FROM_M_NEW = 10;
+    constexpr int FROM_J_NEW = 5;
+    constexpr int FROM_K_NEW = 5;
+    constexpr int FROM_L_NEW = 5;
+    constexpr int FROM_M_NEW = 5;
 
     constexpr int TO_I = FROM_I + SUB_NI;
     constexpr int TO_J = FROM_J + SUB_NJ;
@@ -129,22 +129,20 @@ int main(int argc, char** argv){
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
     set_lsb_chunk_size<N>(chunk_num);
-
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
+    for (int k = 0; k < RUNS; ++k)
+    {
+        LSB_Res();
+        if (rank == 0) 
+        {
             send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
             MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
-            LSB_Rec(k);
         }
-    }
 
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
+        if(rank == 1)
+        {
             recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
-            LSB_Rec(k);
         }
+        LSB_Rec(k);
     }
     LSB_Finalize();
     LSB_chunk_dim_cstr_free_all<N>();
@@ -161,7 +159,6 @@ int main(int argc, char** argv){
     MPI_Type_commit(&recv_type);
 
     for (int k = 0; k < RUNS; ++k) {
-        int count = 0;
 
         LSB_Res();
 
@@ -187,21 +184,20 @@ int main(int argc, char** argv){
     LSB_Init(file_name.c_str(), 0);
     LSB_Set_Rparam_int("rank", rank);
 
-    if (rank == 0) {
-        for (int k = 0; k < RUNS; ++k) {
-            LSB_Res();
+    for (int k = 0; k < RUNS; ++k)
+    {
+        LSB_Res();
+        if (rank == 0) 
+        {
             send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-            LSB_Rec(k);
         }
-    }
 
-    if(rank == 1){
-        for (int k = 0; k < RUNS; ++k){
-            LSB_Res();
+        if(rank == 1)
+        {
             recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
-            LSB_Rec(k);
         }
+        LSB_Rec(k);
     }
     LSB_Finalize();
     // END METHOD 3
