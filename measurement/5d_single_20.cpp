@@ -140,6 +140,9 @@ int main(int argc, char** argv){
         std::string file_name = std::to_string(N) + std::string("d_transmit_with_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
         LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_string("mode", "template");
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
+
         LSB_Set_Rparam_string("type", "sync");
         LSB_Set_Rparam_double("err", 0); // meaningless here
         LSB_Rec_disable();
@@ -171,7 +174,10 @@ int main(int argc, char** argv){
 
         // START METHOD 2
         file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
-        LSB_Init(file_name.c_str(), 0);    LSB_Set_Rparam_int("rank", rank);
+        LSB_Init(file_name.c_str(), 0);
+        LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_string("mode", "datatype");
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
         MPI_Type_create_subarray(N, send_array_size, subarray_size, send_start, MPI_ORDER_C, MPI_INT, &send_type);
         MPI_Type_commit(&send_type);
@@ -215,6 +221,8 @@ int main(int argc, char** argv){
         file_name = std::to_string(N) + std::string("d_transmit_without_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
         LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_string("mode", "manual");
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
         LSB_Set_Rparam_string("type", "sync");
         LSB_Set_Rparam_double("err", 0); // meaningless here
@@ -249,6 +257,8 @@ int main(int argc, char** argv){
         file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
         LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_string("mode", "put_datatype");
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
         MPI_Win window1;
         MPI_Win_create(new_array, new_total * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window1);
@@ -283,6 +293,8 @@ int main(int argc, char** argv){
         file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
         LSB_Init(file_name.c_str(), 0);
         LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_string("mode", "put_manual");
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
         int transmit_size = SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM;
         MPI_Win window2;
