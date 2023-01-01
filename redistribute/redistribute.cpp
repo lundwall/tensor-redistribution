@@ -4,7 +4,12 @@
  */
 
 #include "redistribute.hpp"
+
 #define DEBUG false
+
+#define RUN 1000
+#define WARMUP 10
+#define SYNC 10
 
 int main(int argc, char** argv)
 {
@@ -17,7 +22,7 @@ int main(int argc, char** argv)
 	std::vector<int> pgrid_recv;
 	std::vector<int> total_array_size;
 	redistribution_info* state = new redistribution_info; 
-    read_cfg_file(pgrid_send, pgrid_recv, total_array_size);
+    read_cfg_file(pgrid_send, pgrid_recv, total_array_size, "redistribute.cfg");
     fill_state_information(pgrid_send, pgrid_recv, total_array_size, state);
 
 	check_parameter_valid(pgrid_send, pgrid_recv, total_array_size, size);
@@ -63,13 +68,58 @@ int main(int argc, char** argv)
     	A[i] = i;
     }
 
-    for (int i = 0; i < state->recv_element_count; i++)
-    {
-    	B[i] = 0;
-   	}
+	for (int threads = 4; threads <= 4; ++threads)
+	{
+        omp_set_num_threads(threads);
 
-	std::string MODE = argv[1];
-    redistribute(state, A, state->send_array_dimension, B, state->recv_array_dimension, MODE);
+		for (int num_chunks = 1; num_chunks <= 10; ++num_chunks)
+		{
+			const char* modes[3];
+			modes[0] = "manual";
+			modes[1] = threads > 1 || num_chunks > 1 ? NULL : "datatype";
+			modes[2] = NULL;
+			for (int i=0; modes[i] != NULL; i++)
+			{
+				std::string MODE = modes[i];
+				// Clear received data before redistributing again
+				for (int i = 0; i < state->recv_element_count; i++)
+				{
+					B[i] = 0;
+				}
+
+				// LSB timing setup
+				std::string name = "5d_redistribute_" + MODE + "_t" + std::to_string(omp_get_max_threads());
+				LSB_Init(name.c_str(), 0);
+				LSB_Set_Rparam_int("rank", rank);
+				LSB_Set_Rparam_string("mode", MODE.c_str());
+				LSB_Set_Rparam_string("type", "sync");
+				LSB_Set_Rparam_int("threads", omp_get_max_threads());
+				LSB_Set_Rparam_int("chunks", num_chunks);
+				LSB_Set_Rparam_double("err", 0); // meaningless here
+				double win;
+				double* recorded_values = new double[1000];
+				bool finished = false;
+				LSB_Rec_disable();
+
+				for (auto run_idx = 0; run_idx < WARMUP + SYNC + RUN && !finished; ++run_idx)
+				{
+					configure_LSB_and_sync(run_idx, WARMUP, SYNC, &win);
+					LSB_Res();
+
+					redistribute(state, A, state->send_array_dimension, B, state->recv_array_dimension, MODE, num_chunks);
+
+					int num_recorded_values = run_idx - WARMUP - SYNC + 1;
+					LSB_Rec(std::max(num_recorded_values, 0));
+					if (num_recorded_values >= 1)
+					{
+						aggregate_CIs(num_recorded_values, recorded_values, size, &finished);
+					}
+				}
+
+				LSB_Finalize();
+			}
+		}
+	}
 
     MPI_Finalize();
 	return 0;

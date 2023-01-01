@@ -189,13 +189,13 @@ int main(int argc, char** argv){
         LSB_Res();
         if (rank == 0) 
         {
-            send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
+            send_5d(current_array, 1, current_size_int, from_int, to_int, 1, &sendreq[0], send_buffer);
             MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
         }
 
         if(rank == 1)
         {
-            recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
+            recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, 1);
         }
         LSB_Rec(k);
     }

@@ -114,7 +114,7 @@ void fill_redistribution_information(redistribution_info* state, int myrank)
     return;
 }
 
-void redistribute(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE)
+void redistribute(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE, int num_chunks)
 {
-	redistribute_by_dimension(state, A, A_shape_in, B, B_shape_in, MODE);
+	redistribute_by_dimension(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 }

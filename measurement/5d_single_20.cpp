@@ -136,41 +136,41 @@ int main(int argc, char** argv){
     {    
         omp_set_num_threads(thread_num);
 
-        // START METHOD 1
+        // // START METHOD 1
         std::string file_name = std::to_string(N) + std::string("d_transmit_with_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
-        LSB_Init(file_name.c_str(), 0);
-        LSB_Set_Rparam_int("rank", rank);
-        LSB_Set_Rparam_string("mode", "template");
-        LSB_Set_Rparam_int("threads", omp_get_max_threads());
+        // LSB_Init(file_name.c_str(), 0);
+        // LSB_Set_Rparam_int("rank", rank);
+        // LSB_Set_Rparam_string("mode", "template");
+        // LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
-        LSB_Set_Rparam_string("type", "sync");
-        LSB_Set_Rparam_double("err", 0); // meaningless here
-        LSB_Rec_disable();
-        recorded_values = new double[1000];
-        all_finished = false;
-        for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
-        {
-            configure_LSB_and_sync(k, WARMUP, SYNC, &win);
-            LSB_Res();
-            if (rank == 0) 
-            {
-                send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
-                MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
-            }
+        // LSB_Set_Rparam_string("type", "sync");
+        // LSB_Set_Rparam_double("err", 0); // meaningless here
+        // LSB_Rec_disable();
+        // recorded_values = new double[1000];
+        // all_finished = false;
+        // for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
+        // {
+        //     configure_LSB_and_sync(k, WARMUP, SYNC, &win);
+        //     LSB_Res();
+        //     if (rank == 0) 
+        //     {
+        //         send<T, N>(current_array, 1, current_size, from, to, chunk_num, &sendreq[0], send_buffer);
+        //         MPI_Waitall(1, &sendreq[0], MPI_STATUS_IGNORE);
+        //     }
 
-            if(rank == 1)
-            {
-                recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
-            }
-            int num_recorded_values = k - WARMUP - SYNC + 1;
-            LSB_Rec(std::max(num_recorded_values, 0));
-            if (num_recorded_values >= 1)
-            {
-                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
-            }
-        }
-        LSB_Finalize();
-        // END METHOD 1
+        //     if(rank == 1)
+        //     {
+        //         recv<T, N>(new_array, 0, new_size, from, to, chunk_num);
+        //     }
+        //     int num_recorded_values = k - WARMUP - SYNC + 1;
+        //     LSB_Rec(std::max(num_recorded_values, 0));
+        //     if (num_recorded_values >= 1)
+        //     {
+        //         aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
+        //     }
+        // }
+        // LSB_Finalize();
+        // // END METHOD 1
 
         // START METHOD 2
         file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
@@ -235,13 +235,13 @@ int main(int argc, char** argv){
             LSB_Res();
             if (rank == 0) 
             {
-                send_5d(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
+                send_5d(current_array, 1, current_size_int, from_int, to_int, 1, &sendreq[0], send_buffer);
                 MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             }
 
             if(rank == 1)
             {
-                recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int);
+                recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, 1);
             }
             int num_recorded_values = k - WARMUP - SYNC + 1;
             LSB_Rec(std::max(num_recorded_values, 0));
@@ -253,41 +253,41 @@ int main(int argc, char** argv){
         LSB_Finalize();
         // END METHOD 3
 
-        // START METHOD 4 datatype with one-sided put
-        file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
-        LSB_Init(file_name.c_str(), 0);
-        LSB_Set_Rparam_int("rank", rank);
-        LSB_Set_Rparam_string("mode", "put_datatype");
-        LSB_Set_Rparam_int("threads", omp_get_max_threads());
+        // // START METHOD 4 datatype with one-sided put
+        // file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
+        // LSB_Init(file_name.c_str(), 0);
+        // LSB_Set_Rparam_int("rank", rank);
+        // LSB_Set_Rparam_string("mode", "put_datatype");
+        // LSB_Set_Rparam_int("threads", omp_get_max_threads());
 
-        MPI_Win window1;
-        MPI_Win_create(new_array, new_total * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window1);
-        MPI_Win_fence(0, window1);
+        // MPI_Win window1;
+        // MPI_Win_create(new_array, new_total * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window1);
+        // MPI_Win_fence(0, window1);
 
-        LSB_Set_Rparam_string("type", "sync");
-        LSB_Set_Rparam_double("err", 0); // meaningless here
-        LSB_Rec_disable();
-        recorded_values = new double[1000];
-        all_finished = false;
-        for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
-        {
-            configure_LSB_and_sync(k, WARMUP, SYNC, &win);
-            LSB_Res();
-            if (rank == 0)
-            {
-                MPI_Put(current_array, 1, send_type, 1, 0, 1, recv_type, window1);
-            }
-            MPI_Win_fence(0, window1);
-            int num_recorded_values = k - WARMUP - SYNC + 1;
-            LSB_Rec(std::max(num_recorded_values, 0));
-            if (num_recorded_values >= 1)
-            {
-                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
-            }
-        }
-        MPI_Win_free(&window1);
-        LSB_Finalize();
-        // END METHOD 4
+        // LSB_Set_Rparam_string("type", "sync");
+        // LSB_Set_Rparam_double("err", 0); // meaningless here
+        // LSB_Rec_disable();
+        // recorded_values = new double[1000];
+        // all_finished = false;
+        // for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
+        // {
+        //     configure_LSB_and_sync(k, WARMUP, SYNC, &win);
+        //     LSB_Res();
+        //     if (rank == 0)
+        //     {
+        //         MPI_Put(current_array, 1, send_type, 1, 0, 1, recv_type, window1);
+        //     }
+        //     MPI_Win_fence(0, window1);
+        //     int num_recorded_values = k - WARMUP - SYNC + 1;
+        //     LSB_Rec(std::max(num_recorded_values, 0));
+        //     if (num_recorded_values >= 1)
+        //     {
+        //         aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
+        //     }
+        // }
+        // MPI_Win_free(&window1);
+        // LSB_Finalize();
+        // // END METHOD 4
 
         // START METHOD 5 manual with one-sided put
         file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
