@@ -27,6 +27,7 @@ struct redistribution_info
     int send_element_count;
     MPI_Datatype* send_types;
     MPI_Request* send_req;
+    MPI_Request* send_req_chunk;
 
     MPI_Comm recv_comm;
     MPI_Group recv_group;
@@ -106,10 +107,10 @@ void parse_array_dimension(std::vector<int>& dimension_vector, std::string input
     }
 }
 
-void read_cfg_file(std::vector<int>& pgrid_send, std::vector<int>& pgrid_recv, std::vector<int>& total_array_size)
+void read_cfg_file(std::vector<int>& pgrid_send, std::vector<int>& pgrid_recv, std::vector<int>& total_array_size, std::string cfg_filename)
 {
     std::ifstream cfg_input;
-    cfg_input.open("redistribute.cfg");
+    cfg_input.open(cfg_filename);
     for (std::string line; std::getline(cfg_input, line);)
     {
         std::size_t found = line.find("=");
@@ -174,7 +175,7 @@ void fill_state_information(std::vector<int>& pgrid_send, std::vector<int>& pgri
     state->self_size = new int[max_sends * state->send_dimension];
     state->send_types = new MPI_Datatype[max_sends];
     state->recv_types = new MPI_Datatype[max_recvs];
-    state->send_req = new MPI_Request[max_sends];
+    state->send_req = new MPI_Request[10*max_sends];
     state->recv_block_descriptions = new block_description[max_recvs];
     state->recv_from_ranks = new int[max_recvs];
     state->send_block_descriptions = new block_description[max_sends];
@@ -239,24 +240,33 @@ void print_debug_message(redistribution_info* state, int myrank)
     }
 }
 
-void aggregate_CIs(int num_recorded_values, double* recorded_values, int size, bool* all_finished)
+void aggregate_CIs(int num_recorded_values, double* recorded_values, int size, bool* finished)
 {
     double current_time;
     LSB_Fold(num_recorded_values, LSB_MAX, &current_time);
+    double times_across_ranks[size];
+    MPI_Allgather(&current_time, 1, MPI_DOUBLE, times_across_ranks, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+    double max_time = 0;
+    for (int i = 0; i < size; ++i) {
+        max_time = std::max(max_time, times_across_ranks[i]);
+    }
+
     int i = num_recorded_values - 2;
-    while (i >= 0 && recorded_values[i] > current_time)
+    while (i >= 0 && recorded_values[i] > max_time)
     {
         recorded_values[i + 1] = recorded_values[i];
         --i;
     }
-    recorded_values[i + 1] = current_time;
-    if (num_recorded_values > 5) {
+    recorded_values[i + 1] = max_time;
+
+    if (num_recorded_values >= 10) {
         int lower_ci_index = (int) floor(((double)num_recorded_values - 1.96*sqrt((double)num_recorded_values))/2.0);
         int upper_ci_index = (int) ceil(1 + ((double)num_recorded_values + 1.96*sqrt((double)num_recorded_values))/2.0);
         double lower_ci = recorded_values[lower_ci_index];
         double upper_ci = recorded_values[upper_ci_index];
         double median;
-        if (num_recorded_values % 2 != 0) {
+        if (num_recorded_values % 2 != 0)
+        {
             median = recorded_values[num_recorded_values/2];
         }
         else
@@ -264,13 +274,7 @@ void aggregate_CIs(int num_recorded_values, double* recorded_values, int size, b
             median = (recorded_values[(num_recorded_values-1)/2] + recorded_values[num_recorded_values/2])/2.0;
         }
         double diff = ((median - lower_ci) / median) * 100;
-        int buffer[size];
-        int finished = diff < 5.0;
-        MPI_Allgather(&finished, 1, MPI_INT, buffer, 1, MPI_INT, MPI_COMM_WORLD);
-        *all_finished = true;
-        for (int i = 0; i < size; ++i) {
-            *all_finished &= buffer[i];
-        }
+        *finished = diff < 5.0;
     }
 }
 

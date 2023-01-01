@@ -7,9 +7,6 @@
 #include <math.h>
 #include "utils.hpp"
 #include "send_recv_5d.hpp"
-#define RUN 1000
-#define WARMUP 10
-#define SYNC 10
 
 template<std::size_t... I, typename U>
 auto as_tuple(const U &arr, std::index_sequence<I...>) {
@@ -48,7 +45,7 @@ void CopyNDDynamicHelper(int copy_idx, int* src_strides, int* rcv_strides, int* 
 }
 
 template <size_t N>
-void redistribute_by_dimension_template(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE)
+void redistribute_by_dimension_template(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE, int num_chunks)
 {
 	int* _inp_buffer = &A[0];
     int* _out_buffer = &B[0];
@@ -63,173 +60,131 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
     auto B_shape_tup = array_to_tuple<N>(B_shape_in);
     auto chunk_num_tup = array_to_tuple<N>(chunk);
 
-    std::string name = std::to_string(N) + "d_redistribute";
-    LSB_Init(name.c_str(), 0);
+	size_t allocate_number = std::max(state->send_count, 1);
+	int** send_buffers = new int*[allocate_number];
 
-    int rank, size;
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
+	NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
+	NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
+	NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
 
-	LSB_Set_Rparam_int("rank", rank);
-	LSB_Set_Rparam_string("mode", MODE.c_str());
-	LSB_Set_Rparam_string("type", "sync");
-	LSB_Set_Rparam_int("threads", omp_get_max_threads());
-	LSB_Set_Rparam_double("err", 0); // meaningless here
-	double win;
-
-    double* recorded_values = new double[1000];
-
-	LSB_Rec_disable();
-
-	bool all_finished = false;
-
-	for (auto run_idx = 0; run_idx < WARMUP + SYNC + RUN && !all_finished; ++run_idx)
+	for (auto idx = 0; idx < state->send_count; ++idx)
 	{
-		
-		size_t allocate_number = std::max(state->send_count, 1);
-		int** send_buffers = new int*[allocate_number];
-
-		NdIndices<N>* from_tup_send = new NdIndices<N>[state->send_count];
-		NdIndices<N>* to_tup_send = new NdIndices<N>[state->send_count];
-		NdIndices<N>* from_tup_recv = new NdIndices<N>[state->recv_count]; 
-		NdIndices<N>* to_tup_recv = new NdIndices<N>[state->recv_count];
-
-		for (auto idx = 0; idx < state->send_count; ++idx)
+		from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
+		to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
+		NdIndices<N> range = to_tup_send[idx] - from_tup_send[idx];
+		int sending_total = get_product<N>(range);
+		send_buffers[idx] = new int[sending_total];
+	}
+	for (auto idx = 0; idx < state->send_count; ++idx)
+	{
+		if (MODE == "manual")
 		{
-			from_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].from);
-			to_tup_send[idx] = array_to_tuple<N>(state->send_block_descriptions[idx].to);
-			NdIndices<N> range = to_tup_send[idx] - from_tup_send[idx];
-			int sending_total = get_product<N>(range);
-			send_buffers[idx] = new int[sending_total];
+			send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, num_chunks, &state->send_req[num_chunks*idx], send_buffers[idx]);
 		}
-		configure_LSB_and_sync(run_idx, WARMUP, SYNC, &win);
-		LSB_Res();
-	    for (auto idx = 0; idx < state->send_count; ++idx)
-	    {
-	    	if (MODE == "manual")
-	    	{
-		    	send_5d(_inp_buffer, state->send_to_ranks[idx], A_shape_in, state->send_block_descriptions[idx].from, state->send_block_descriptions[idx].to, &state->send_req[idx], send_buffers[idx]);
-	    	}
-	    	else if (MODE == "template")
-			{
-		    	send<int, N>(_inp_buffer, state->send_to_ranks[idx], A_shape_tup, from_tup_send[idx], to_tup_send[idx], chunk_num_tup, &state->send_req[idx], send_buffers[idx]);
-			}
-			else
-	    	{
-	    		MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
-	    	}
-	    }
-
-	    for (auto idx = 0; idx < state->recv_count; ++idx) 
-	    {
-	    	if (MODE == "manual")
-	    	{
-		    	recv_5d(_out_buffer, state->recv_from_ranks[idx], B_shape_in, state->recv_block_descriptions[idx].from, state->recv_block_descriptions[idx].to);
-	    	}
-			else if (MODE == "template")
-			{
-		    	recv<int, N>(_out_buffer, state->recv_from_ranks[idx], B_shape_tup, from_tup_recv[idx], to_tup_recv[idx], chunk_num_tup);
-			}
-	    	else
-	    	{
-	    		MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	    	}
-	    }
-
-		MPI_Waitall(state->send_count, state->send_req, MPI_STATUSES_IGNORE);
-
-		int num_recorded_values = run_idx - WARMUP - SYNC + 1;
-		LSB_Rec(std::max(num_recorded_values, 0));
-		if (num_recorded_values >= 1)
+		else if (MODE == "datatype")
 		{
-			aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
-		}
-
-		for (auto idx = 0; idx < state->send_count; ++idx)
-		{
-			delete[] send_buffers[idx];
-		}
-
-		delete[] send_buffers;
-		send_buffers = nullptr;
-
-		int* copy_source = _inp_buffer;
-		int* copy_dest = _out_buffer;
-		int src_strides[N];
-		int rcv_strides[N];
-		for (auto idx = 0; idx < state->copy_count; ++idx) 
-		{
-			src_strides[N-1] = 1;
-			rcv_strides[N-1] = 1;
-			int src_stride = 1;
-			int rcv_stride = 1;
-			for (auto dim_idx = state->send_dimension-1; dim_idx >= 0; dim_idx--)
-			{
-				copy_source += state->self_src[idx * state->send_dimension + dim_idx] * src_stride;
-				src_strides[dim_idx] = src_stride;
-				src_stride *= A_shape_in[dim_idx];
-			}
-
-			for (auto dim_idx = state->recv_dimension=1; dim_idx >= 0; dim_idx--)
-			{
-				copy_dest += state->self_dst[idx * state->recv_dimension + dim_idx] * rcv_stride;
-				rcv_strides[dim_idx] = rcv_stride;
-				rcv_stride *= B_shape_in[dim_idx];
-			}
-
-			CopyNDDynamicHelper<N, 1>(idx, src_strides, rcv_strides, state->self_size, copy_source, copy_dest, state->self_size[0], src_strides[0], rcv_strides[0]);
+			MPI_Isend(_inp_buffer, 1, state->send_types[idx], state->send_to_ranks[idx], 0, MPI_COMM_WORLD, &state->send_req[idx]);
 		}
 	}
-    LSB_Finalize();
+
+	for (auto idx = 0; idx < state->recv_count; ++idx) 
+	{
+		if (MODE == "manual")
+		{
+			recv_5d(_out_buffer, state->recv_from_ranks[idx], B_shape_in, state->recv_block_descriptions[idx].from, state->recv_block_descriptions[idx].to, num_chunks);
+		}
+		else if (MODE == "datatype")
+		{
+			MPI_Recv(_out_buffer, 1, state->recv_types[idx], state->recv_from_ranks[idx], 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		}
+	}
+
+	MPI_Waitall(state->send_count * num_chunks, state->send_req, MPI_STATUSES_IGNORE);
+
+	for (auto idx = 0; idx < state->send_count; ++idx)
+	{
+		delete[] send_buffers[idx];
+	}
+
+	delete[] send_buffers;
+	send_buffers = nullptr;
+
+	int* copy_source = _inp_buffer;
+	int* copy_dest = _out_buffer;
+	int src_strides[N];
+	int rcv_strides[N];
+	for (auto idx = 0; idx < state->copy_count; ++idx) 
+	{
+		src_strides[N-1] = 1;
+		rcv_strides[N-1] = 1;
+		int src_stride = 1;
+		int rcv_stride = 1;
+		for (auto dim_idx = state->send_dimension-1; dim_idx >= 0; dim_idx--)
+		{
+			copy_source += state->self_src[idx * state->send_dimension + dim_idx] * src_stride;
+			src_strides[dim_idx] = src_stride;
+			src_stride *= A_shape_in[dim_idx];
+		}
+
+		for (auto dim_idx = state->recv_dimension=1; dim_idx >= 0; dim_idx--)
+		{
+			copy_dest += state->self_dst[idx * state->recv_dimension + dim_idx] * rcv_stride;
+			rcv_strides[dim_idx] = rcv_stride;
+			rcv_stride *= B_shape_in[dim_idx];
+		}
+
+		CopyNDDynamicHelper<N, 1>(idx, src_strides, rcv_strides, state->self_size, copy_source, copy_dest, state->self_size[0], src_strides[0], rcv_strides[0]);
+	}
 }
 
-void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE)
+void redistribute_by_dimension(redistribution_info* state, int* A, int* A_shape_in, int* B, int* B_shape_in, std::string MODE, int num_chunks)
 {
 	switch(state->send_dimension)
 	{
 		case 2:
 		{
-			redistribute_by_dimension_template<2>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<2>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 3:
 		{
-			redistribute_by_dimension_template<3>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<3>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 4:
 		{
-			redistribute_by_dimension_template<4>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<4>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 5:
 		{
-			redistribute_by_dimension_template<5>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<5>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 6:
 		{
-			redistribute_by_dimension_template<6>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<6>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 7:
 		{
-			redistribute_by_dimension_template<7>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<7>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 8:
 		{
-			redistribute_by_dimension_template<8>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<8>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 9:
 		{
-			redistribute_by_dimension_template<9>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<9>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		case 10:
 		{
-			redistribute_by_dimension_template<10>(state, A, A_shape_in, B, B_shape_in, MODE);
+			redistribute_by_dimension_template<10>(state, A, A_shape_in, B, B_shape_in, MODE, num_chunks);
 			break;
 		}
 		default:
