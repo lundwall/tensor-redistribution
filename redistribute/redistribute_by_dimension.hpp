@@ -110,6 +110,13 @@ void redistribute_by_dimension_template(redistribution_info* state, int* A, int*
 	delete[] send_buffers;
 	send_buffers = nullptr;
 
+	delete[] chunk;
+
+	delete[] from_tup_send;
+	delete[] to_tup_send;
+	delete[] from_tup_recv;
+	delete[] to_tup_recv;
+
 	int* copy_source = _inp_buffer;
 	int* copy_dest = _out_buffer;
 	int src_strides[N];

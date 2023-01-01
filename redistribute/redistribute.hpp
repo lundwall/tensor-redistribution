@@ -111,6 +111,12 @@ void fill_redistribution_information(redistribution_info* state, int myrank)
     calculate_send_redistribution_blocks(0, state->recv_dimension, pcoords, subsize, from, to, lo_send, state, state->send_block_descriptions, state->send_to_ranks, myrank);
     calculate_recv_redistribution_blocks(0, state->send_dimension, pcoords, subsize, from, to, lo_send, state, state->recv_block_descriptions, state->recv_from_ranks, myrank);
     
+    delete[] pcoords;
+    delete[] subsize;
+    delete[] from;
+    delete[] to;
+    delete[] lo_send;
+
     return;
 }
 

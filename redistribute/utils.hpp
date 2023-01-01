@@ -27,7 +27,6 @@ struct redistribution_info
     int send_element_count;
     MPI_Datatype* send_types;
     MPI_Request* send_req;
-    MPI_Request* send_req_chunk;
 
     MPI_Comm recv_comm;
     MPI_Group recv_group;
@@ -181,6 +180,33 @@ void fill_state_information(std::vector<int>& pgrid_send, std::vector<int>& pgri
     state->send_block_descriptions = new block_description[max_sends];
     state->send_to_ranks = new int[max_sends];
 
+}
+
+void delete_state_information(redistribution_info* state) {
+    delete[] state->send_coords;
+    delete[] state->recv_coords;
+    delete[] state->send_array_dimension;
+    delete[] state->recv_array_dimension;
+    delete[] state->self_src;
+    delete[] state->self_dst;
+    delete[] state->self_size;
+    delete[] state->send_types;
+    delete[] state->recv_types;
+    delete[] state->send_req;
+    for (int i = 0; i < state->send_count; i++) {
+        delete[] state->send_block_descriptions[i].from;
+        delete[] state->send_block_descriptions[i].to;
+    }
+    delete[] state->recv_block_descriptions;
+    delete[] state->recv_from_ranks;
+    for (int i = 0; i < state->recv_count; i++) {
+        delete[] state->recv_block_descriptions[i].from;
+        delete[] state->recv_block_descriptions[i].to;
+    }
+    delete[] state->send_block_descriptions;
+    delete[] state->send_to_ranks;
+
+    delete state;
 }
 
 void print_debug_message(redistribution_info* state, int myrank)

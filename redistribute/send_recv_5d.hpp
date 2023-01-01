@@ -98,4 +98,6 @@ void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to, int
             }
         }
     }
+
+    delete[] buffer;
 }

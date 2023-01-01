@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 	{
         omp_set_num_threads(threads);
 
-		for (int num_chunks = 1; num_chunks <= 10; ++num_chunks)
+		for (int num_chunks = 1; num_chunks <= 1; ++num_chunks)
 		{
 			const char* modes[3];
 			modes[0] = "manual";
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 				}
 
 				// LSB timing setup
-				std::string name = "5d_redistribute_" + MODE + "_t" + std::to_string(omp_get_max_threads());
+				std::string name = "5d_redistribute_" + MODE + "_t" + std::to_string(omp_get_max_threads()) + "_c" + std::to_string(num_chunks);
 				LSB_Init(name.c_str(), 0);
 				LSB_Set_Rparam_int("rank", rank);
 				LSB_Set_Rparam_string("mode", MODE.c_str());
@@ -116,10 +116,17 @@ int main(int argc, char** argv)
 					}
 				}
 
+				delete[] recorded_values;
 				LSB_Finalize();
 			}
 		}
 	}
+
+    delete_state_information(state);
+	delete[] A;
+	delete[] B;
+	delete[] pgrid_period_send;
+	delete[] pgrid_period_recv;
 
     MPI_Finalize();
 	return 0;
