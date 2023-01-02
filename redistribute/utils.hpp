@@ -183,6 +183,12 @@ void fill_state_information(std::vector<int>& pgrid_send, std::vector<int>& pgri
 }
 
 void delete_state_information(redistribution_info* state) {
+    MPI_Group_free(&state->send_group);
+    MPI_Comm_free(&state->send_comm);
+
+    MPI_Group_free(&state->recv_group);
+    MPI_Comm_free(&state->recv_comm);
+
     delete[] state->send_coords;
     delete[] state->recv_coords;
     delete[] state->send_array_dimension;
@@ -193,18 +199,20 @@ void delete_state_information(redistribution_info* state) {
     delete[] state->send_types;
     delete[] state->recv_types;
     delete[] state->send_req;
+
     for (int i = 0; i < state->send_count; i++) {
         delete[] state->send_block_descriptions[i].from;
         delete[] state->send_block_descriptions[i].to;
     }
-    delete[] state->recv_block_descriptions;
-    delete[] state->recv_from_ranks;
+    delete[] state->send_block_descriptions;
+    delete[] state->send_to_ranks;
+
     for (int i = 0; i < state->recv_count; i++) {
         delete[] state->recv_block_descriptions[i].from;
         delete[] state->recv_block_descriptions[i].to;
     }
-    delete[] state->send_block_descriptions;
-    delete[] state->send_to_ranks;
+    delete[] state->recv_block_descriptions;
+    delete[] state->recv_from_ranks;
 
     delete state;
 }

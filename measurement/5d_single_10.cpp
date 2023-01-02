@@ -169,6 +169,7 @@ int main(int argc, char** argv){
         //         aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
         //     }
         // }
+        // delete[] recorded_values;
         // LSB_Finalize();
         // // END METHOD 1
 
@@ -213,6 +214,7 @@ int main(int argc, char** argv){
                 aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
+        delete[] recorded_values;
         LSB_Finalize();
 
         // END METHOD 2
@@ -249,6 +251,7 @@ int main(int argc, char** argv){
                 aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
             }
         }
+        delete[] recorded_values;
         LSB_Finalize();
         // END METHOD 3
 
@@ -285,6 +288,7 @@ int main(int argc, char** argv){
         //     }
         // }
         // MPI_Win_free(&window1);
+        //delete[] recorded_values;
         // LSB_Finalize();
         // // END METHOD 4
 
@@ -327,6 +331,7 @@ int main(int argc, char** argv){
             }
         }
         MPI_Win_free(&window2);
+        delete[] recorded_values;
         LSB_Finalize();
     }
     delete[] current_array; 
@@ -335,5 +340,13 @@ int main(int argc, char** argv){
     new_array = nullptr;
     delete[] send_buffer;
     send_buffer = nullptr;
+    delete[] send_array;
+    send_array = nullptr;
+    delete[] recv_array;
+    recv_array = nullptr;
+    delete[] sendreq;
+    sendreq = nullptr;
+    delete[] recvreq;
+    recvreq = nullptr;
     MPI_Finalize();
 }
