@@ -16,7 +16,7 @@ df_saved = df_saved[df_saved['type'] == 'running'] # remove syncing runs
 # Select max across all ranks for each run
 df = df.groupby(['id', 'threads', 'mode'])['time'].agg(['max']).reset_index()
 
-for t in range(1, 9):
+for t in sorted(df['threads'].unique()):
     plt.figure()
     df = df_saved.copy()
     df = df[df['threads'] == t] # select threads from loop
