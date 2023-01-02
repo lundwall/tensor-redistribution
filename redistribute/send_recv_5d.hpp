@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 
-void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, int num_chunks, MPI_Request *request_chunks, int* buffer) {
+void send_5d(int* source, int other_rank, int* current_size, int* from, int* to, int num_chunks, MPI_Request *request, int* buffer) {
 	if (num_chunks > 10)
 	{
 		std::cout << "Cannot have more than 10 chunks" << std::endl;
@@ -19,7 +19,7 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
     int NL = current_size[3];
     int NM = current_size[4];
 
-    for (int c = 0; c < num_chunks; ++c) { request_chunks[c] = MPI_REQUEST_NULL; }
+    for (int c = 0; c < num_chunks; ++c) { request[c] = MPI_REQUEST_NULL; }
 
     int chunk_size = (int) SUB_NI / num_chunks;
     int rem = SUB_NI % num_chunks;
@@ -41,7 +41,7 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
                 }
             }
         }
-        MPI_Isend(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request_chunks[c]);
+        MPI_Isend(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request[c]);
     }
 }
 
