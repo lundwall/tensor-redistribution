@@ -199,12 +199,15 @@ int main(int argc, char** argv){
             if (rank == 0)
             {
                 MPI_Isend(&(current_array[0]), 1, send_type, 1, 0, MPI_COMM_WORLD, &sendreq[0]);
+                MPI_Recv(&(new_array[0]), 1, recv_type, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             }
 
             if (rank == 1)
             {
+                MPI_Isend(&(current_array[0]), 1, send_type, 0, 0, MPI_COMM_WORLD, &sendreq[0]);
                 MPI_Recv(&(new_array[0]), 1, recv_type, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             }
 
             int num_recorded_values = k - WARMUP - SYNC + 1;
@@ -237,12 +240,15 @@ int main(int argc, char** argv){
             if (rank == 0) 
             {
                 send_5d(current_array, 1, current_size_int, from_int, to_int, 1, &sendreq[0], send_buffer);
+                recv_5d(new_array, 1, new_size_int, from_rec_int, to_rec_int, 1);
                 MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             }
 
             if(rank == 1)
             {
+                send_5d(current_array, 0, current_size_int, from_int, to_int, 1, &sendreq[0], send_buffer);
                 recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, 1);
+                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
             }
             int num_recorded_values = k - WARMUP - SYNC + 1;
             LSB_Rec(std::max(num_recorded_values, 0));
@@ -302,7 +308,6 @@ int main(int argc, char** argv){
         int transmit_size = SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM;
         MPI_Win window2;
         MPI_Win_create(recv_array,  transmit_size * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &window2);
-        MPI_Win_fence(0, window2);
 
         LSB_Set_Rparam_string("type", "sync");
         LSB_Set_Rparam_double("err", 0); // meaningless here
@@ -311,16 +316,23 @@ int main(int argc, char** argv){
         all_finished = false;
         for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
         {
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Win_fence(0, window2);
             configure_LSB_and_sync(k, WARMUP, SYNC, &win);
             LSB_Res();
             if (rank == 0)
             {
                 prepare_send_buffer(current_array, current_size_int, from_int, to_int, send_array);
                 MPI_Put(send_array, transmit_size, MPI_INT, 1, 0, transmit_size, MPI_INT, window2);
+                MPI_Win_fence(0, window2);
+                unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
             }
-            MPI_Win_fence(0, window2);
+            
             if(rank == 1)
             {
+                prepare_send_buffer(current_array, current_size_int, from_int, to_int, send_array);
+                MPI_Put(send_array, transmit_size, MPI_INT, 0, 0, transmit_size, MPI_INT, window2);
+                MPI_Win_fence(0, window2);
                 unpack_recv_buffer(new_array, new_size_int, from_rec_int, to_rec_int, recv_array);
             }
             int num_recorded_values = k - WARMUP - SYNC + 1;
