@@ -14,11 +14,12 @@ df_saved = pd.concat(df_list)
 df_saved = df_saved[df_saved['type'] == 'running'] # remove syncing runs
 
 # Select max across all ranks for each run
-df = df.groupby(['id', 'threads', 'mode'])['time'].agg(['max']).reset_index()
+df = df_saved.groupby(['id', 'threads', 'mode'])['time'].agg(['max']).reset_index()
 
 for t in sorted(df['threads'].unique()):
     plt.figure()
     df = df_saved.copy()
+    print(df)
     df = df[df['threads'] == t] # select threads from loop
     # df = df[df['mode'] != 'template'] # template and put_datatype are too big to be nice, so they're excluded
     # df = df[df['mode'] != 'put_datatype']
