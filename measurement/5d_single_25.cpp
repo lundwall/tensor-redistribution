@@ -345,6 +345,46 @@ int main(int argc, char** argv){
         MPI_Win_free(&window2);
         delete[] recorded_values;
         LSB_Finalize();
+
+
+        // START METHOD 6
+        file_name = std::to_string(N) + std::string("d_transmit_without_API_chunk_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI);
+        LSB_Init(file_name.c_str(), 0);
+        LSB_Set_Rparam_string("mode", "manual");
+        LSB_Set_Rparam_int("rank", rank);
+        LSB_Set_Rparam_int("threads", omp_get_max_threads());
+        LSB_Set_Rparam_string("type", "sync");
+        LSB_Set_Rparam_double("err", 0); // meaningless here
+        LSB_Rec_disable();
+        recorded_values = new double[1000];
+        all_finished = false;
+        for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
+        {
+            configure_LSB_and_sync(k, WARMUP, SYNC, &win);
+            LSB_Res();
+            if (rank == 0) 
+            {
+                send_5d_no_chunk(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
+                recv_5d_no_chunk(new_array, 1, new_size_int, from_rec_int, to_rec_int);
+                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+            }
+
+            if(rank == 1)
+            {
+                send_5d_no_chunk(current_array, 0, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
+                recv_5d_no_chunk(new_array, 0, new_size_int, from_rec_int, to_rec_int);
+                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+            }
+            int num_recorded_values = k - WARMUP - SYNC + 1;
+            LSB_Rec(std::max(num_recorded_values, 0));
+            if (num_recorded_values >= 1)
+            {
+                aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
+            }
+        }
+        delete[] recorded_values;
+        LSB_Finalize();
+        // END METHOD 6
     }
     delete[] current_array; 
     current_array = nullptr;
