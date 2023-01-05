@@ -7,7 +7,7 @@ module load gcc openmpi cmake
 if [ ! -z "$1" -a "$1" = "--get-lsb" ]; then
     git clone https://github.com/spcl/liblsb.git
     cd liblsb
-    ./configure --prefix=$HOME/.local
+    ./configure --prefix=$HOME/.local --enable-sync
     make -j2
     make install
 fi
