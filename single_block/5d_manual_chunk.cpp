@@ -9,20 +9,20 @@
 #define NI 40
 #define NJ 40
 #define NK 60
-#define NL 80
-#define NM 60
+#define NL 20
+#define NM 240
 
 #define NI_NEW 40
 #define NJ_NEW 40
-#define NK_NEW 80
+#define NK_NEW 20
 #define NL_NEW 60
-#define NM_NEW 60
+#define NM_NEW 240
 
-#define SUB_NI 20
-#define SUB_NJ 20
-#define SUB_NK 20
-#define SUB_NL 20
-#define SUB_NM 20
+#define SUB_NI 15
+#define SUB_NJ 15
+#define SUB_NK 15
+#define SUB_NL 15
+#define SUB_NM 120
 
 #define RUNS 100
 
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
     for (int r = 0; r < RUNS; ++r) {
         MPI_Barrier(MPI_COMM_WORLD);
         int count = 0;
-        int num_chunks = 2;
+        int num_chunks = 5;
         int chunk_size = (int) SUB_NI / num_chunks;
         int rem = SUB_NI % num_chunks;
         LSB_Res();
