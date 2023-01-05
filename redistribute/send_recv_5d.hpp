@@ -41,7 +41,7 @@ void send_5d(int* source, int other_rank, int* current_size, int* from, int* to,
                 }
             }
         }
-        MPI_Isend(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request[c]);
+        MPI_Isend(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, c, MPI_COMM_WORLD, &request[c]);
     }
 }
 
@@ -66,7 +66,7 @@ void recv_5d(int* target, int other_rank, int* new_size, int* from, int* to, int
         int start_SUB_NI = c*chunk_size + std::min(c, rem);
         int end_SUB_NI = (c + 1)*chunk_size + std::min(c + 1, rem);
         MPI_Request request;
-        MPI_Irecv(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, 0, MPI_COMM_WORLD, &request);
+        MPI_Irecv(buffer + start_SUB_NI*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, (end_SUB_NI - start_SUB_NI)*SUB_NJ*SUB_NK*SUB_NL*SUB_NM, MPI_INT, other_rank, c, MPI_COMM_WORLD, &request);
         #pragma omp parallel for collapse(4)
         for (int i = (c-1)*chunk_size + std::min(c-1, rem); i < start_SUB_NI; i++)
         {
