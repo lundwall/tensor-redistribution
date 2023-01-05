@@ -1,0 +1,6 @@
+add_executable(5d_datatype "5d_datatype.cpp")
+add_executable(5d_manual "5d_manual.cpp")
+target_include_directories(5d_datatype PUBLIC "../auto/include" "../redistribute")
+target_include_directories(5d_manual PUBLIC "../auto/include" "../redistribute")
+target_link_libraries(5d_datatype PUBLIC MPI::MPI_CXX OpenMP::OpenMP_CXX lsb)
+target_link_libraries(5d_manual PUBLIC MPI::MPI_CXX OpenMP::OpenMP_CXX lsb)
