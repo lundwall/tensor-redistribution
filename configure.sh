@@ -7,7 +7,10 @@ module load gcc openmpi cmake
 if [ ! -z "$1" -a "$1" = "--get-lsb" ]; then
     git clone https://github.com/spcl/liblsb.git
     cd liblsb
-    ./configure --prefix=$HOME/.local
+    sed -i '480s/.*/    return 0;/' sync/hca_sync.cpp
+    sed -i '29s/^/\/\//' sync/hca_sync.h
+    sed -i '61s/^/\/\//' sync/hca_sync.h
+    ./configure --prefix=$HOME/.local --enable-sync
     make -j2
     make install
 fi
