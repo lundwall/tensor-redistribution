@@ -8,4 +8,4 @@
 #SBATCH --time=24:00:00
 
 export OMP_NUM_THREADS=8
-srun --cpu-bind=cores /cluster/home/mlundwall/dphpc/build/redistribute/redistribute
+srun --cpu-bind=cores ./build/redistribute/redistribute
