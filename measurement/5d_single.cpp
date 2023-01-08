@@ -31,11 +31,11 @@ int main(int argc, char** argv){
         throw std::runtime_error("When testing only 1 block transmission, only 2 processors are needed");
     }
 
-    int experiment_size[6][5] = {
-        {6,6,6,6,6},{3,3,3,3,24},{12,12,12,12,12},{6,6,6,6,48},{24,24,24,24,24},{12,12,12,12,96}
+    int experiment_size[5][5] = {
+        {6,6,6,6,6},{12,12,12,12,12},{6,6,6,6,48},{24,24,24,24,24},{12,12,12,12,96}
     };
 
-    for (int exp_it = 0; exp_it < 6; exp_it++)
+    for (int exp_it = 0; exp_it < 5; exp_it++)
     {
 	printf("start new experiment\n");
         int NI = 50;
@@ -120,7 +120,7 @@ int main(int argc, char** argv){
         bool all_finished;
 
         int thread_num;
-        for (thread_num = 1; thread_num <= 8; thread_num++)
+        for (thread_num = 1; thread_num <= 4; thread_num++)
         {    
             omp_set_num_threads(thread_num);
 	    MPI_Barrier(MPI_COMM_WORLD);
@@ -193,6 +193,7 @@ int main(int argc, char** argv){
 	        MPI_Barrier(MPI_COMM_WORLD);
                 for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
                 {
+		    MPI_Barrier(MPI_COMM_WORLD);
                     configure_LSB_and_sync(k, WARMUP, SYNC, &win);
                     LSB_Res();
                     if (rank == 0) 
@@ -206,10 +207,11 @@ int main(int argc, char** argv){
                     {
                         send_5d(current_array, 0, current_size_int, from_int, to_int, num_chunk, &sendreq[0], send_buffer);
                         recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, num_chunk);
-                        MPI_Waitall(num_chunk, sendreq, MPI_STATUSES_IGNORE);
+		     	MPI_Waitall(num_chunk, sendreq, MPI_STATUSES_IGNORE);
                     }
                     int num_recorded_values = k - WARMUP - SYNC + 1;
                     LSB_Rec(std::max(num_recorded_values, 0));
+		    MPI_Barrier(MPI_COMM_WORLD);
                     if (num_recorded_values >= 1)
                     {
                         aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
