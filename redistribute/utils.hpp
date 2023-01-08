@@ -307,8 +307,9 @@ void aggregate_CIs(int num_recorded_values, double* recorded_values, int size, b
         {
             median = (recorded_values[(num_recorded_values-1)/2] + recorded_values[num_recorded_values/2])/2.0;
         }
-        double diff = ((median - lower_ci) / median) * 100;
-        *finished = diff < 5.0;
+        double diff1 = ((median - lower_ci) / median) * 100;
+        double diff2 = ((upper_ci - median) / median) * 100;
+        *finished = diff1 < 5.0 && diff2 < 5.0;
     }
 }
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # euler loading
+env2lmod
 module load gcc openmpi cmake
 
 # build lsb if needed
