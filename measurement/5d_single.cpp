@@ -37,6 +37,7 @@ int main(int argc, char** argv){
 
     for (int exp_it = 0; exp_it < 6; exp_it++)
     {
+	printf("start new experiment\n");
         int NI = 50;
         int NJ = 50;
         int NK = 50;
@@ -98,8 +99,8 @@ int main(int argc, char** argv){
         int send_start[N] = {FROM_I,FROM_J,FROM_K,FROM_L,FROM_M};
         int recv_array_size[N] = {NI_NEW,NJ_NEW,NK_NEW,NL_NEW,NM_NEW};
         int recv_start[N] = {FROM_I_NEW,FROM_J_NEW,FROM_K_NEW,FROM_L_NEW,FROM_M_NEW};
-        MPI_Request* sendreq = new MPI_Request[1];
-        MPI_Request* recvreq = new MPI_Request[1];
+        MPI_Request* sendreq = new MPI_Request[10];
+        MPI_Request* recvreq = new MPI_Request[10];
 
         char processor_name[256];
         int len_processor_name = 0;
@@ -122,6 +123,7 @@ int main(int argc, char** argv){
         for (thread_num = 1; thread_num <= 8; thread_num++)
         {    
             omp_set_num_threads(thread_num);
+	    MPI_Barrier(MPI_COMM_WORLD);
             // START METHOD 1
             std::string file_name = std::to_string(N) + std::string("d_transmit_custom_datatype_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI) + std::string("_") + std::to_string(SUB_NJ) + std::string("_") + std::to_string(SUB_NK) + std::string("_") + std::to_string(SUB_NL) + std::string("_") + std::to_string(SUB_NM);
             LSB_Init(file_name.c_str(), 0);
@@ -172,6 +174,8 @@ int main(int argc, char** argv){
             // END METHOD 1
 
             // START METHOD 2
+	    // int num_chunk = 1;
+	    MPI_Barrier(MPI_COMM_WORLD);
             for (int num_chunk = 1; num_chunk < 6; num_chunk++)
             {
                 file_name = std::to_string(N) + std::string("d_transmit_without_API_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI) + std::string("_") + std::to_string(SUB_NJ) + std::string("_") + std::to_string(SUB_NK) + std::string("_") + std::to_string(SUB_NL) + std::string("_") + std::to_string(SUB_NM);
@@ -186,6 +190,7 @@ int main(int argc, char** argv){
                 LSB_Rec_disable();
                 recorded_values = new double[1000];
                 all_finished = false;
+	        MPI_Barrier(MPI_COMM_WORLD);
                 for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
                 {
                     configure_LSB_and_sync(k, WARMUP, SYNC, &win);
@@ -194,14 +199,14 @@ int main(int argc, char** argv){
                     {
                         send_5d(current_array, 1, current_size_int, from_int, to_int, num_chunk, &sendreq[0], send_buffer);
                         recv_5d(new_array, 1, new_size_int, from_rec_int, to_rec_int, num_chunk);
-                        MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                        MPI_Waitall(num_chunk, sendreq, MPI_STATUSES_IGNORE);
                     }
 
                     if(rank == 1)
                     {
                         send_5d(current_array, 0, current_size_int, from_int, to_int, num_chunk, &sendreq[0], send_buffer);
                         recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, num_chunk);
-                        MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                        MPI_Waitall(num_chunk, sendreq, MPI_STATUSES_IGNORE);
                     }
                     int num_recorded_values = k - WARMUP - SYNC + 1;
                     LSB_Rec(std::max(num_recorded_values, 0));
@@ -231,9 +236,9 @@ int main(int argc, char** argv){
             LSB_Rec_disable();
             recorded_values = new double[1000];
             all_finished = false;
+	    MPI_Barrier(MPI_COMM_WORLD);
             for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
             {
-                MPI_Barrier(MPI_COMM_WORLD);
                 MPI_Win_fence(0, window2);
                 configure_LSB_and_sync(k, WARMUP, SYNC, &win);
                 LSB_Res();
@@ -263,44 +268,6 @@ int main(int argc, char** argv){
             LSB_Finalize();
             // END METHOD 3
 
-            // START METHOD 4
-            file_name = std::to_string(N) + std::string("d_transmit_without_API_chunk_t") + std::to_string(omp_get_max_threads())  + std::string("_") + std::to_string(SUB_NI) + std::string("_") + std::to_string(SUB_NJ) + std::string("_") + std::to_string(SUB_NK) + std::string("_") + std::to_string(SUB_NL) + std::string("_") + std::to_string(SUB_NM);
-            LSB_Init(file_name.c_str(), 0);
-            LSB_Set_Rparam_string("mode", "manual");
-            LSB_Set_Rparam_int("rank", rank);
-            LSB_Set_Rparam_int("threads", omp_get_max_threads());
-            LSB_Set_Rparam_string("type", "sync");
-            LSB_Set_Rparam_double("err", 0); // meaningless here
-            LSB_Rec_disable();
-            recorded_values = new double[1000];
-            all_finished = false;
-            for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
-            {
-                configure_LSB_and_sync(k, WARMUP, SYNC, &win);
-                LSB_Res();
-                if (rank == 0) 
-                {
-                    send_5d_no_chunk(current_array, 1, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
-                    recv_5d_no_chunk(new_array, 1, new_size_int, from_rec_int, to_rec_int);
-                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-                }
-
-                if(rank == 1)
-                {
-                    send_5d_no_chunk(current_array, 0, current_size_int, from_int, to_int, &sendreq[0], send_buffer);
-                    recv_5d_no_chunk(new_array, 0, new_size_int, from_rec_int, to_rec_int);
-                    MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
-                }
-                int num_recorded_values = k - WARMUP - SYNC + 1;
-                LSB_Rec(std::max(num_recorded_values, 0));
-                if (num_recorded_values >= 1)
-                {
-                    aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
-                }
-            }
-            delete[] recorded_values;
-            LSB_Finalize();
-            // END METHOD 4
         }
         delete[] current_array; 
         current_array = nullptr;
