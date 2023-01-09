@@ -32,7 +32,7 @@ int main(int argc, char** argv){
     }
 
     int experiment_size[5][5] = {
-        {6,6,6,6,6},{12,12,12,12,12},{6,6,6,6,48},{24,24,24,24,24},{12,12,12,12,96}
+        {6,6,6,6,6},{12,12,12,12,12},{16,16,16,16,16},{20,20,20,20,20},{24,24,24,24,24}
     };
     T* current_array;
     T* new_array;
@@ -45,6 +45,7 @@ int main(int argc, char** argv){
     new_array = new T[50*50*50*50*100];
     send_array = new T[25*25*25*25*25];
     recv_array = new T[25*25*25*25*25];
+    double* recorded_values = new double[1000];
     int thread_num;
     for (thread_num = 1; thread_num <= 4; thread_num++)
     {    
@@ -117,7 +118,6 @@ int main(int argc, char** argv){
             size_t new_total = NI_NEW*NJ_NEW*NK_NEW*NL_NEW*NM_NEW;
 
             double win;
-            double* recorded_values;
             bool all_finished;
 	        MPI_Barrier(MPI_COMM_WORLD);
             // START METHOD 1
@@ -136,7 +136,6 @@ int main(int argc, char** argv){
             LSB_Set_Rparam_string("type", "sync");
             LSB_Set_Rparam_double("err", 0); // meaningless here
             LSB_Rec_disable();
-            recorded_values = new double[1000];
             all_finished = false;
             for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
             {
@@ -164,7 +163,7 @@ int main(int argc, char** argv){
                     aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
                 }
             }
-            delete[] recorded_values;
+	    MPI_Barrier(MPI_COMM_WORLD);
             LSB_Finalize();
 
             // END METHOD 1
@@ -183,12 +182,10 @@ int main(int argc, char** argv){
                 LSB_Set_Rparam_string("type", "sync");
                 LSB_Set_Rparam_double("err", 0); // meaningless here
                 LSB_Rec_disable();
-                recorded_values = new double[1000];
                 all_finished = false;
 	            MPI_Barrier(MPI_COMM_WORLD);
                 for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
                 {
-		        MPI_Barrier(MPI_COMM_WORLD);
                     configure_LSB_and_sync(k, WARMUP, SYNC, &win);
                     LSB_Res();
                     if (rank == 0) 
@@ -208,15 +205,16 @@ int main(int argc, char** argv){
                     LSB_Rec(std::max(num_recorded_values, 0));
 		            MPI_Barrier(MPI_COMM_WORLD);
                     if (num_recorded_values >= 1)
-                    {
+		    {
                         aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
                     }
                 }
-                delete[] recorded_values;
+	    MPI_Barrier(MPI_COMM_WORLD);
                 LSB_Finalize();
             }
             // END METHOD 2
 
+		        MPI_Barrier(MPI_COMM_WORLD);
             // START METHOD 3 manual with one-sided put
             file_name = std::to_string(N) + std::string("d_transmit_manual_put_t") + std::to_string(omp_get_max_threads()) + std::string("_") + std::to_string(SUB_NI) + std::string("_") + std::to_string(SUB_NJ) + std::string("_") + std::to_string(SUB_NK) + std::string("_") + std::to_string(SUB_NL) + std::string("_") + std::to_string(SUB_NM);
             LSB_Init(file_name.c_str(), 0);
@@ -231,7 +229,6 @@ int main(int argc, char** argv){
             LSB_Set_Rparam_string("type", "sync");
             LSB_Set_Rparam_double("err", 0); // meaningless here
             LSB_Rec_disable();
-            recorded_values = new double[1000];
             all_finished = false;
 	        MPI_Barrier(MPI_COMM_WORLD);
             for (int k = 0; k < WARMUP + SYNC + RUNS && !all_finished; ++k)
@@ -260,8 +257,8 @@ int main(int argc, char** argv){
                     aggregate_CIs(num_recorded_values, recorded_values, size, &all_finished);
                 }
             }
+		        MPI_Barrier(MPI_COMM_WORLD);
             MPI_Win_free(&window2);
-            delete[] recorded_values;
             LSB_Finalize();
             // END METHOD 3
 
@@ -281,6 +278,8 @@ int main(int argc, char** argv){
     sendreq = nullptr;
     delete[] recvreq;
     recvreq = nullptr;
+    delete[] recorded_values;
+    recorded_values = nullptr;
     MPI_Finalize();
 }
 
