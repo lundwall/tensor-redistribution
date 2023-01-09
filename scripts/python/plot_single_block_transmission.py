@@ -16,6 +16,11 @@ for filename in os.listdir(os.getcwd() + '/' + folder):
     size_elements = name_elements[-5::]
     try:
         size_tuple = (int(size_elements[0]), int(size_elements[1]), int(size_elements[2]), int(size_elements[3]), int(size_elements[4]))
+        # sometimes like (12,12,12,12,96) has better chunking result then (24,24,24,24,24). So when running
+        # experiments I also include block size like that. But I'm not sure whether they should be put inside 
+        # the result plots. Comment out the following if statement if you want to display the size also.
+        if size_tuple[0] != size_tuple[1] or size_tuple[1] != size_tuple[2] or size_tuple[2] != size_tuple[3] or size_tuple[3] != size_tuple[4]:
+            continue
         if size_tuple in size_to_df:
             size_to_df[size_tuple].append(df)
         else:
@@ -47,22 +52,50 @@ plt.figure()
 fig, axes = plt.subplots()
 sns.violinplot(data = df_t1_c1, x = 'size_string', y = 'max', hue = 'mode', ax = axes)
 # sns.pointplot(data = df_t1_c1, x = 'mode', y = 'max', order=sorted(df['mode'].unique()), ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
-
-plt.savefig(f'manual_vs_datatype.pdf')
+plt.tick_params(axis='x', which='major', labelsize=5)
+plt.xlabel('block size')
+plt.ylabel('time')
+plt.savefig(f'manual_vs_datatype.png')
 plt.close()
 
-# manual packing with thread acceleration
+# manual packing with thread acceleration 47MB
+df_c1_lsize = df_all[((df_all['size_string'] == '26*26*26*26*26') & (df_all['mode'] == 'manual') & (df_all['chunk'] == 1)) | ((df_all['size_string'] == '26*26*26*26*26') & (df_all['mode'] == 'datatype') & (df_all['threads'] == 1))]
+df_c1_lsize = df_c1_lsize.groupby(['id', 'mode', 'threads'])['time'].agg(['max']).reset_index()
+plt.figure()
+fig, axes = plt.subplots()
+sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode',ax = axes)
+# sns.pointplot(data = df_c1_lsize, x = 'chunk', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
+plt.xlabel('thread number')
+plt.ylabel('time')
+plt.savefig(f'manual_with_threads_vs_datatype_47MB.png')
+plt.close()
+
+# manual packing with thread acceleration 31MB
 df_c1_lsize = df_all[((df_all['size_string'] == '24*24*24*24*24') & (df_all['mode'] == 'manual') & (df_all['chunk'] == 1)) | ((df_all['size_string'] == '24*24*24*24*24') & (df_all['mode'] == 'datatype') & (df_all['threads'] == 1))]
 df_c1_lsize = df_c1_lsize.groupby(['id', 'mode', 'threads'])['time'].agg(['max']).reset_index()
 plt.figure()
 fig, axes = plt.subplots()
 sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode',ax = axes)
 # sns.pointplot(data = df_c1_lsize, x = 'chunk', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
-
-plt.savefig(f'manual_with_threads_vs_datatype.pdf')
+plt.xlabel('thread number')
+plt.ylabel('time')
+plt.savefig(f'manual_with_threads_vs_datatype_31MB.png')
 plt.close()
 
-# manual packing with chunking
+# manual packing with chunking 47MB
+df_t1_lsize = df_all[(df_all['size_string'] == '26*26*26*26*26') & (df_all['threads'] == 1)]
+df_t1_lsize = df_t1_lsize.groupby(['id', 'mode', 'chunk'])['time'].agg(['max']).reset_index()
+df_t1_lsize = df_t1_lsize[(df_t1_lsize['mode'] == 'datatype') | (df_t1_lsize['mode'] == 'manual')]
+plt.figure()
+fig, axes = plt.subplots()
+sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', hue = 'mode', ax = axes)
+# sns.pointplot(data = df_t1_lsize, x = 'chunk', y = 'max', order=sorted(df_t1_lsize['chunk'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
+plt.xlabel('chunk number')
+plt.ylabel('time')
+plt.savefig(f'manual_packing_with_chunking_vs_datatype_47MB.png')
+plt.close()
+
+# manual packing with chunking 31MB
 df_t1_lsize = df_all[(df_all['size_string'] == '24*24*24*24*24') & (df_all['threads'] == 1)]
 df_t1_lsize = df_t1_lsize.groupby(['id', 'mode', 'chunk'])['time'].agg(['max']).reset_index()
 df_t1_lsize = df_t1_lsize[(df_t1_lsize['mode'] == 'datatype') | (df_t1_lsize['mode'] == 'manual')]
@@ -70,15 +103,20 @@ plt.figure()
 fig, axes = plt.subplots()
 sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', hue = 'mode', ax = axes)
 # sns.pointplot(data = df_t1_lsize, x = 'chunk', y = 'max', order=sorted(df_t1_lsize['chunk'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
-
-plt.savefig(f'manual_packing_with_chunking_vs_datatype.pdf')
+plt.xlabel('chunk number')
+plt.ylabel('time')
+plt.savefig(f'manual_packing_with_chunking_vs_datatype_31MB.png')
 plt.close()
 
 # MPI one sided
-df_c1_lsize = df_all[(df_all['size_string'] == '24*24*24*24*24') & (df_all['chunk'] == 1) & (df_all['threads'] == 1)]
-df_c1_lsize = df_c1_lsize.groupby(['id', 'mode'])['time'].agg(['max']).reset_index()
+df_c1_lsize = df_all[(df_all['chunk'] == 1) & (df_all['threads'] == 1)]
+df_c1_lsize = df_c1_lsize.groupby(['id', 'mode', 'size_string', 'total_size'])['time'].agg(['max']).reset_index()
+df_c1_lsize = df_c1_lsize.sort_values(['total_size'])
 plt.figure()
 fig, axes = plt.subplots()
-sns.violinplot(data = df_c1_lsize, x = 'mode', y = 'max', ax = axes)
-plt.savefig(f'manual_packing_with_one_sided_vs_datatype.pdf')
+sns.violinplot(data = df_c1_lsize, x = 'size_string', y = 'max', hue = 'mode', ax = axes)
+plt.tick_params(axis='x', which='major', labelsize=5)
+plt.xlabel('block size')
+plt.ylabel('time')
+plt.savefig(f'manual_packing_with_one_sided_vs_datatype.png')
 plt.close()
