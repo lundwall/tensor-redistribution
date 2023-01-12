@@ -248,14 +248,14 @@ int main(int argc, char** argv){
             {
                 send_5d(current_array, 1, current_size_int, from_int, to_int, 4, &sendreq[0], send_buffer);
                 recv_5d(new_array, 1, new_size_int, from_rec_int, to_rec_int, 4);
-                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                MPI_Waitall(4, sendreq, MPI_STATUSES_IGNORE);
             }
 
             if(rank == 1)
             {
                 send_5d(current_array, 0, current_size_int, from_int, to_int, 4, &sendreq[0], send_buffer);
                 recv_5d(new_array, 0, new_size_int, from_rec_int, to_rec_int, 4);
-                MPI_Waitall(1, sendreq, MPI_STATUSES_IGNORE);
+                MPI_Waitall(4, sendreq, MPI_STATUSES_IGNORE);
             }
             int num_recorded_values = k - WARMUP - SYNC + 1;
             LSB_Rec(std::max(num_recorded_values, 0));
