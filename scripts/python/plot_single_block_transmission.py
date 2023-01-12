@@ -58,7 +58,7 @@ plt.figure()
 sns.set_style('darkgrid')
 fig, axes = plt.subplots()
 df_t1_c1['max'] =  np.log2(df_t1_c1['max'])
-a = sns.violinplot(data = df_t1_c1, x = 'size_string', y = 'max', hue = 'mode', hue_order = ['datatype', 'manual'], ax = axes, facet_kws={'legend_out': True})
+a = sns.violinplot(data = df_t1_c1, x = 'size_string', y = 'max', hue = 'mode', hue_order = ['datatype', 'manual'], ax = axes, facet_kws={'legend_out': True}, palette={'datatype':'tab:blue', 'manual':'tab:orange'})
 # sns.pointplot(data = df_t1_c1, x = 'mode', y = 'max', oder=sorted(df['mode'].unique()), ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
 plt.tick_params(axis='x', which='major', labelsize=9)
 a.set_title("Single-block transmission time for manual packing and datatype", fontdict = {'fontsize' : 9})
@@ -87,7 +87,7 @@ fig, axes = plt.subplots()
 # hack: set datatype thread = 0 here so it would stay at left most part of the plot
 cond = df_c1_lsize['mode'] == 'datatype'
 df_c1_lsize.loc[cond,'threads'] = 0
-a = sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()),ax = axes)
+a = sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()),ax = axes, palette=['tab:blue', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange'])
 # sns.pointplot(data = df_c1_lsize, x = 'chunk', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
 plt.xlabel('Thread number')
 plt.ylabel('Time(us)')
@@ -110,7 +110,7 @@ fig, axes = plt.subplots()
 # hack: set datatype thread = 0 here so it would stay at left most part of the plot
 cond = df_c1_lsize['mode'] == 'datatype'
 df_c1_lsize.loc[cond,'threads'] = 0
-a = sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), ax = axes)
+a = sns.violinplot(data = df_c1_lsize, x = 'threads', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), ax = axes, palette=['tab:blue', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange'])
 # sns.pointplot(data = df_c1_lsize, x = 'chunk', y = 'max', order=sorted(df_c1_lsize['threads'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
 plt.xlabel('Thread number')
 plt.ylabel("Time(us)")
@@ -134,7 +134,7 @@ cond = df_t1_lsize['mode'] == 'datatype'
 df_t1_lsize.loc[cond,'chunk'] = 0
 sns.set_style('darkgrid')
 fig, axes = plt.subplots()
-a = sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', ax = axes)
+a = sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', ax = axes, palette=['tab:blue', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange'])
 # sns.pointplot(data = df_t1_lsize, x = 'chunk', y = 'max', order=sorted(df_t1_lsize['chunk'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
 plt.xlabel('Chunk number')
 plt.ylabel("Time(us)")
@@ -158,7 +158,7 @@ cond = df_t1_lsize['mode'] == 'datatype'
 df_t1_lsize.loc[cond,'chunk'] = 0
 sns.set_style('darkgrid')
 fig, axes = plt.subplots()
-a = sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', ax = axes)
+a = sns.violinplot(data = df_t1_lsize, x = 'chunk', y = 'max', ax = axes, palette=['tab:blue', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange'])
 # sns.pointplot(data = df_t1_lsize, x = 'chunk', y = 'max', order=sorted(df_t1_lsize['chunk'].unique()), hue = 'mode', ax = axes, estimator=np.median, color='black', join=False, scale=0.5, errwidth=1, capsize=0.01)
 plt.xlabel('Chunk number')
 plt.ylabel("Time(us)")
@@ -179,7 +179,7 @@ df_c1_lsize['max'] =  np.log2(df_c1_lsize['max'])
 plt.figure()
 sns.set_style('darkgrid')
 fig, axes = plt.subplots()
-a = sns.violinplot(data = df_c1_lsize, x = 'size_string', y = 'max', hue = 'mode', hue_order = ['datatype', 'manual', 'put_manual'], ax = axes, facet_kws={'legend_out': True})
+a = sns.violinplot(data = df_c1_lsize, x = 'size_string', y = 'max', hue = 'mode', hue_order = ['datatype', 'manual', 'put_manual'], ax = axes, facet_kws={'legend_out': True}, palette={'datatype':'tab:blue', 'manual':'tab:orange', 'put_manual':'tab:green'})
 plt.tick_params(axis='x', which='major', labelsize=9)
 plt.xlabel('Block size')
 plt.ylabel("Time(us)")
