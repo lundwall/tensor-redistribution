@@ -20,6 +20,8 @@ make
 We use the files ```5d_single_10```, ```5d_single_20```, ```5d_single_30``` to run the 5d single block tramsmission experiments. Each would
 run with sub block size = 10**5 ints, 20 ** 5 ints, 30 ** 5 ints, respectively.
 
+```scripts/bash/euler_redist.sh``` performs all the redistribution experiments on euler, and ```scripts/python/plot_redist.sh``` does the plots in the report.
+
 ## How to run
 We run the experiments on Euler. For each experiment we use command like this:
 
