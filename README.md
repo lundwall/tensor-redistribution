@@ -1,15 +1,21 @@
-# DPHPC
+# Accelerating Redistribution of Tensors
 
 ## Environment set up
-The package and their versions we are using:
+We are using the following package versions:
 
 gcc/8.2.0 openmpi/4.0.2 cmake/3.20.3
+
+On Euler, simply run:
+
+```
+./configure.sh
+```
 
 
 ## How to build
 
-First make sure the working directory is at dphpc/ directory (root directory of this project).
-Then
+First, make sure the working directory is at dphpc/ directory (root directory of this project).
+Then:
 
 ```
 mkdir build
